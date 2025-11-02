@@ -29,6 +29,7 @@ services:
     volumes:
       - ..:/usr/src/app
       - ${UPLOAD_LOCATION}/photos:/data
+      - "D:/My Project/Test Video:/media:ro" # import path in Windows system.
       - /etc/localtime:/etc/localtime:ro
       - pnpm-store:/usr/src/app/.pnpm-store
       - server-node_modules:/usr/src/app/server/node_modules
