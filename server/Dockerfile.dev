@@ -24,6 +24,13 @@ ENV PATH="${PATH}:/usr/src/app/server/bin:/usr/src/app/web/bin" \
   NVIDIA_VISIBLE_DEVICES=all
 ENTRYPOINT ["tini", "--", "/bin/bash", "-c"]
 
+# Fix: ensure ffprobe can load x265 by installing matching shared library
+# Jellyfin-ffmpeg in the base image is built against libx265.so.215.
+# Without this library, ffprobe fails with: libx265.so.215: cannot open shared object file.
+RUN apt-get update --allow-releaseinfo-change \
+  && apt-get install -y --no-install-recommends libx265-215 \
+  && rm -rf /var/lib/apt/lists/*
+
 FROM dev AS dev-container-server
 
 RUN apt-get update --allow-releaseinfo-change && \
