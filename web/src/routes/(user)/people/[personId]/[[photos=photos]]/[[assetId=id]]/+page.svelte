@@ -11,6 +11,7 @@
   import ButtonContextMenu from '$lib/components/shared-components/context-menu/button-context-menu.svelte';
   import MenuOption from '$lib/components/shared-components/context-menu/menu-option.svelte';
   import ControlAppBar from '$lib/components/shared-components/control-app-bar.svelte';
+  import ViewToggleButton from '$lib/components/shared-components/view-toggle-button.svelte';
   import AddToAlbum from '$lib/components/timeline/actions/AddToAlbumAction.svelte';
   import ArchiveAction from '$lib/components/timeline/actions/ArchiveAction.svelte';
   import ChangeDate from '$lib/components/timeline/actions/ChangeDateAction.svelte';
@@ -79,6 +80,14 @@
   let viewMode: PersonPageViewMode = $state(PersonPageViewMode.VIEW_ASSETS);
   let isEditingName = $state(false);
   let previousRoute: string = $state(AppRoute.EXPLORE);
+
+  // 视图切换状态
+  let isListView = $state(false);
+
+  const handleViewToggle = (newIsListView: boolean) => {
+    isListView = newIsListView;
+  };
+
   let people: PersonResponseDto[] = [];
   let personMerge1: PersonResponseDto | undefined = $state();
   let personMerge2: PersonResponseDto | undefined = $state();
@@ -369,6 +378,7 @@
       bind:timelineManager
       {options}
       {assetInteraction}
+      {isListView}
       isSelectionMode={viewMode === PersonPageViewMode.SELECT_PERSON}
       singleSelect={viewMode === PersonPageViewMode.SELECT_PERSON}
       onSelect={handleSelectFeaturePhoto}
@@ -528,6 +538,7 @@
     {#if viewMode === PersonPageViewMode.VIEW_ASSETS}
       <ControlAppBar showBackButton backIcon={mdiArrowLeft} onClose={() => goto(previousRoute)}>
         {#snippet trailing()}
+          <ViewToggleButton {isListView} onToggle={handleViewToggle} />
           <ButtonContextMenu icon={mdiDotsVertical} title={$t('menu')}>
             <MenuOption
               text={$t('select_featured_photo')}

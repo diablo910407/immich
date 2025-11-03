@@ -2,6 +2,7 @@
   import { afterNavigate, beforeNavigate } from '$app/navigation';
   import { page } from '$app/state';
   import { resizeObserver, type OnResizeCallback } from '$lib/actions/resize-observer';
+  import AssetListView from '$lib/components/assets/asset-list-view.svelte';
   import Scrubber from '$lib/components/timeline/Scrubber.svelte';
   import TimelineAssetViewer from '$lib/components/timeline/TimelineAssetViewer.svelte';
   import TimelineKeyboardActions from '$lib/components/timeline/actions/TimelineKeyboardActions.svelte';
@@ -19,7 +20,7 @@
   import { assetViewingStore } from '$lib/stores/asset-viewing.store';
   import { isSelectingAllAssets } from '$lib/stores/assets-store.svelte';
   import { mobileDevice } from '$lib/stores/mobile-device.svelte';
-  import { isAssetViewerRoute } from '$lib/utils/navigation';
+  import { isAssetViewerRoute, navigate } from '$lib/utils/navigation';
   import { getTimes, type ScrubberListener } from '$lib/utils/timeline-util';
   import { type AlbumResponseDto, type PersonResponseDto } from '@immich/sdk';
   import { DateTime } from 'luxon';
@@ -37,6 +38,7 @@
     timelineManager?: TimelineManager;
     options?: TimelineManagerOptions;
     assetInteraction: AssetInteraction;
+    isListView?: boolean;
     removeAction?:
       | AssetAction.UNARCHIVE
       | AssetAction.ARCHIVE
@@ -75,6 +77,7 @@
     timelineManager = $bindable(),
     options,
     assetInteraction,
+    isListView = false,
     removeAction = null,
     withStacked = false,
     showArchiveIcon = false,
@@ -100,6 +103,31 @@
 
   let timelineElement: HTMLElement | undefined = $state();
   let invisible = $state(true);
+
+  // 视图模式基于传入的isListView属性
+  const viewMode = $derived(isListView ? 'list' : 'grid');
+
+  // 添加调试日志
+  $effect(() => {
+    console.log('Timeline: isListView changed to:', isListView);
+    console.log('Timeline: viewMode changed to:', viewMode);
+    console.log('Timeline: timelineManager.months.length:', timelineManager?.months?.length || 0);
+    console.log('Timeline: timelineManager.isInitialized:', timelineManager?.isInitialized || false);
+  });
+
+  // 处理资产点击事件的函数
+  const _onClick = (
+    timelineManager: TimelineManager,
+    assets: TimelineAsset[],
+    groupTitle: string,
+    asset: TimelineAsset,
+  ) => {
+    if (isSelectionMode || assetInteraction.selectionActive) {
+      handleSelectAssets(asset);
+      return;
+    }
+    void navigate({ targetRoute: 'current', assetId: asset.id });
+  };
   // The percentage of scroll through the month that is currently intersecting the top boundary of the viewport.
   // Note: There may be multiple months visible within the viewport at any given time.
   let viewportTopMonthScrollPercent = $state(0);
@@ -643,20 +671,79 @@
           style:transform={`translate3d(0,${absoluteHeight}px,0)`}
           style:width="100%"
         >
-          <TimelineDateGroup
-            {withStacked}
-            {showArchiveIcon}
-            {assetInteraction}
-            {timelineManager}
-            {isSelectionMode}
-            {singleSelect}
-            {monthGroup}
-            onSelect={({ title, assets }) => handleGroupSelect(timelineManager, title, assets)}
-            onSelectAssetCandidates={handleSelectAssetCandidates}
-            onSelectAssets={handleSelectAssets}
-            {customLayout}
-            {onThumbnailClick}
-          />
+          {#if viewMode === 'grid'}
+            <TimelineDateGroup
+              {withStacked}
+              {showArchiveIcon}
+              {assetInteraction}
+              {timelineManager}
+              {isSelectionMode}
+              {singleSelect}
+              {monthGroup}
+              onSelect={({ title, assets }) => handleGroupSelect(timelineManager, title, assets)}
+              onSelectAssetCandidates={handleSelectAssetCandidates}
+              onSelectAssets={handleSelectAssets}
+              {customLayout}
+              {onThumbnailClick}
+            />
+          {:else}
+            <!-- 列表视图 -->
+            <div class="p-4">
+              <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
+                {monthGroup.monthGroupTitle}
+              </h3>
+              {#each monthGroup.dayGroups as dayGroup}
+                {#if dayGroup.intersecting}
+                  <div class="mb-6">
+                    <h4 class="text-md font-medium mb-3 text-gray-700 dark:text-gray-300">
+                      {dayGroup.groupTitle}
+                    </h4>
+                    {(() => {
+                      const assets = dayGroup.getAssets();
+                      console.log(
+                        'Timeline: Rendering AssetListView for dayGroup:',
+                        dayGroup.groupTitle,
+                        'assets count:',
+                        assets.length,
+                      );
+                      console.log('Timeline: dayGroup.intersecting:', dayGroup.intersecting);
+                      return '';
+                    })()}
+                    <AssetListView
+                      assets={dayGroup.getAssets()}
+                      selectedAssets={new Set(
+                        dayGroup.getAssets().filter((asset) => assetInteraction.hasSelectedAsset(asset.id)),
+                      )}
+                      selectionCandidates={new Set(
+                        dayGroup.getAssets().filter((asset) => assetInteraction.hasSelectionCandidate(asset.id)),
+                      )}
+                      disabled={false}
+                      {showArchiveIcon}
+                      on:click={({ detail }) => {
+                        console.log('Timeline: AssetListView click event received for asset:', detail.asset.id);
+                        if (typeof onThumbnailClick === 'function') {
+                          onThumbnailClick(detail.asset, timelineManager, dayGroup, _onClick);
+                        } else {
+                          _onClick(timelineManager, dayGroup.getAssets(), dayGroup.groupTitle, detail.asset);
+                        }
+                      }}
+                      on:select={({ detail }) => {
+                        console.log('Timeline: AssetListView select event received for asset:', detail.asset.id);
+                        handleSelectAssets(detail.asset);
+                      }}
+                      on:mouseEvent={({ detail }) => {
+                        console.log(
+                          'Timeline: AssetListView mouseEvent received for asset:',
+                          detail.asset?.id || 'null',
+                        );
+                        handleSelectAssetCandidates(detail.asset);
+                      }}
+                    />
+                  </div>
+                {/if}
+              {/each}
+            </div>
+          {/if}
         </div>
       {/if}
     {/each}
