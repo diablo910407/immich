@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+﻿#!/usr/bin/env bash
 
 log_container_verbose() {
   if [[ $IMMICH_LOG_LEVEL == verbose ]]; then
