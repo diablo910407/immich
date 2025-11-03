@@ -693,49 +693,31 @@
                 {monthGroup.monthGroupTitle}
               </h3>
               {#each monthGroup.dayGroups as dayGroup}
-                {#if dayGroup.intersecting}
+                {#if dayGroup.intersecting && dayGroup.getAssets().length > 0}
+                  {@const assets = dayGroup.getAssets()}
+                  {@const selectedAssets = new Set(assets.filter((asset) => assetInteraction.hasSelectedAsset(asset.id)))}
+                  {@const selectionCandidates = new Set(assets.filter((asset) => assetInteraction.hasSelectionCandidate(asset.id)))}
                   <div class="mb-6">
                     <h4 class="text-md font-medium mb-3 text-gray-700 dark:text-gray-300">
                       {dayGroup.groupTitle}
                     </h4>
-                    {(() => {
-                      const assets = dayGroup.getAssets();
-                      console.log(
-                        'Timeline: Rendering AssetListView for dayGroup:',
-                        dayGroup.groupTitle,
-                        'assets count:',
-                        assets.length,
-                      );
-                      console.log('Timeline: dayGroup.intersecting:', dayGroup.intersecting);
-                      return '';
-                    })()}
                     <AssetListView
-                      assets={dayGroup.getAssets()}
-                      selectedAssets={new Set(
-                        dayGroup.getAssets().filter((asset) => assetInteraction.hasSelectedAsset(asset.id)),
-                      )}
-                      selectionCandidates={new Set(
-                        dayGroup.getAssets().filter((asset) => assetInteraction.hasSelectionCandidate(asset.id)),
-                      )}
+                      {assets}
+                      {selectedAssets}
+                      {selectionCandidates}
                       disabled={false}
                       {showArchiveIcon}
                       on:click={({ detail }) => {
-                        console.log('Timeline: AssetListView click event received for asset:', detail.asset.id);
                         if (typeof onThumbnailClick === 'function') {
                           onThumbnailClick(detail.asset, timelineManager, dayGroup, _onClick);
                         } else {
-                          _onClick(timelineManager, dayGroup.getAssets(), dayGroup.groupTitle, detail.asset);
+                          _onClick(timelineManager, assets, dayGroup.groupTitle, detail.asset);
                         }
                       }}
                       on:select={({ detail }) => {
-                        console.log('Timeline: AssetListView select event received for asset:', detail.asset.id);
                         handleSelectAssets(detail.asset);
                       }}
                       on:mouseEvent={({ detail }) => {
-                        console.log(
-                          'Timeline: AssetListView mouseEvent received for asset:',
-                          detail.asset?.id || 'null',
-                        );
                         handleSelectAssetCandidates(detail.asset);
                       }}
                     />

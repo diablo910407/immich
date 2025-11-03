@@ -5,8 +5,11 @@
   import { AssetMediaSize } from '@immich/sdk';
   import { Icon } from '@immich/ui';
   import { mdiAccount, mdiFolder, mdiImage, mdiVideo } from '@mdi/js';
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
   import ImageThumbnail from './thumbnail/image-thumbnail.svelte';
+  import { getAssetInfo, type AssetResponseDto } from '@immich/sdk';
+  import { authManager } from '$lib/managers/auth-manager.svelte';
+  import { getAssetFilename, getFileSize } from '$lib/utils/asset-utils';
 
   export let asset: TimelineAsset;
   export let selected = false;
@@ -17,6 +20,21 @@
     select: { asset: TimelineAsset; selected: boolean };
     click: { asset: TimelineAsset };
   }>();
+
+  let fullAssetInfo: AssetResponseDto | null = null;
+  let isLoadingAssetInfo = false;
+
+  // 加载完整的资产信息
+  onMount(async () => {
+    try {
+      isLoadingAssetInfo = true;
+      fullAssetInfo = await getAssetInfo({ ...authManager.params, id: asset.id });
+    } catch (error) {
+      console.error('Failed to load asset info:', error);
+    } finally {
+      isLoadingAssetInfo = false;
+    }
+  });
 
   const handleClick = () => {
     console.log('AssetListItem: Click event for asset:', asset.id, 'disabled:', disabled);
@@ -43,31 +61,54 @@
 
   // 获取文件名
   const getFileName = (asset: TimelineAsset): string => {
-    return asset.id; // TimelineAsset没有文件名，使用ID作为占位符
+    if (fullAssetInfo) {
+      return getAssetFilename(fullAssetInfo);
+    }
+    return `资源-${asset.id.slice(0, 8)}...`; // 使用资产ID的前8位作为占位符
   };
 
   // 获取人物信息
   const getPersonInfo = (asset: TimelineAsset): string => {
-    if (!asset.people || asset.people.length === 0) {
-      return '无关联人物';
+    if (fullAssetInfo?.people && fullAssetInfo.people.length > 0) {
+      const peopleNames = fullAssetInfo.people.map(p => p.name).filter(name => name);
+      if (peopleNames.length === 0) {
+        return '无关联人物';
+      } else if (peopleNames.length === 1) {
+        return peopleNames[0];
+      } else if (peopleNames.length <= 3) {
+        return peopleNames.join(', ');
+      } else {
+        return `${peopleNames.slice(0, 2).join(', ')} 等${peopleNames.length}人`;
+      }
     }
-
-    if (asset.people.length === 1) {
-      return asset.people[0];
-    } else if (asset.people.length <= 3) {
-      return asset.people.join(', ');
-    } else {
-      return `${asset.people.slice(0, 2).join(', ')} 等${asset.people.length}人`;
+    
+    // 回退到TimelineAsset中的people信息
+    if (asset.people && asset.people.length > 0) {
+      if (asset.people.length === 1) {
+        return asset.people[0];
+      } else if (asset.people.length <= 3) {
+        return asset.people.join(', ');
+      } else {
+        return `${asset.people.slice(0, 2).join(', ')} 等${asset.people.length}人`;
+      }
     }
+    
+    return '无关联人物';
   };
 
   // 获取文件路径
   const getFilePath = (asset: TimelineAsset): string => {
-    return `资源ID: ${asset.id}`; // TimelineAsset没有路径信息，使用ID作为占位符
+    if (fullAssetInfo?.originalPath) {
+      return fullAssetInfo.originalPath;
+    }
+    return `资源ID: ${asset.id}`; // 使用资产ID作为占位符
   };
 
-  // 格式化文件大小（TimelineAsset没有文件大小信息）
+  // 格式化文件大小
   const formatFileSize = (): string => {
+    if (fullAssetInfo) {
+      return getFileSize(fullAssetInfo);
+    }
     return '大小未知';
   };
 
@@ -129,11 +170,11 @@
           class="mr-2 text-gray-500 dark:text-gray-400 flex-shrink-0"
         />
         <span class="font-medium text-gray-900 dark:text-gray-100 truncate" title={getFileName(asset)}>
-          {getFileName(asset)}
+          {isLoadingAssetInfo ? '加载中...' : getFileName(asset)}
         </span>
       </div>
       <div class="text-sm text-gray-500 dark:text-gray-400">
-        {formatDate(asset)} • {formatFileSize()}
+        {formatDate(asset)} • {isLoadingAssetInfo ? '...' : formatFileSize()}
       </div>
     </div>
 
@@ -142,7 +183,7 @@
       <div class="flex items-center mb-1">
         <Icon icon={mdiAccount} size="16" class="mr-2 text-gray-500 dark:text-gray-400 flex-shrink-0" />
         <span class="text-gray-700 dark:text-gray-300 truncate" title={getPersonInfo(asset)}>
-          {getPersonInfo(asset)}
+          {isLoadingAssetInfo ? '加载中...' : getPersonInfo(asset)}
         </span>
       </div>
       <div class="text-sm text-gray-500 dark:text-gray-400">
@@ -155,11 +196,11 @@
       <div class="flex items-center mb-1">
         <Icon icon={mdiFolder} size="16" class="mr-2 text-gray-500 dark:text-gray-400 flex-shrink-0" />
         <span class="text-gray-700 dark:text-gray-300 truncate" title={getFilePath(asset)}>
-          {getFilePath(asset)}
+          {isLoadingAssetInfo ? '加载中...' : getFilePath(asset)}
         </span>
       </div>
       <div class="text-sm text-gray-500 dark:text-gray-400">
-        {getFilePath(asset)}
+        {isLoadingAssetInfo ? '加载中...' : getFilePath(asset)}
       </div>
     </div>
   </div>

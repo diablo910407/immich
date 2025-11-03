@@ -26,26 +26,16 @@
   }>();
 
   const handleAssetClick = (asset: TimelineAsset) => {
-    console.log('AssetListView: Asset clicked:', asset.id);
     dispatch('click', { asset });
   };
 
   const handleAssetSelect = (asset: TimelineAsset) => {
-    console.log('AssetListView: Asset selected:', asset.id);
     dispatch('select', { asset });
   };
 
   const handleMouseEvent = (asset: TimelineAsset | null) => {
-    console.log('AssetListView: Mouse event on asset:', asset?.id || 'null');
     dispatch('mouseEvent', { asset });
   };
-
-  // 添加调试日志
-  $effect(() => {
-    console.log('AssetListView: assets.length:', assets.length);
-    console.log('AssetListView: selectedAssets.size:', selectedAssets.size);
-    console.log('AssetListView: selectionCandidates.size:', selectionCandidates.size);
-  });
 </script>
 
 <div class="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
