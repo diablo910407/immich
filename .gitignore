@@ -28,3 +28,6 @@ vite.config.js.timestamp-*
 .pnpm-store
 .devcontainer/library
 .devcontainer/.env*
+
+docker/docker-compose.dev.yml
+docker/docker-compose.yml
