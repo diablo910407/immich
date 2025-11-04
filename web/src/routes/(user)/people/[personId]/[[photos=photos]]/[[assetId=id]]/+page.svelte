@@ -81,8 +81,8 @@
   let isEditingName = $state(false);
   let previousRoute: string = $state(AppRoute.EXPLORE);
 
-  // 视图切换状态
-  let isListView = $state(false);
+  // 视图切换状态，默认使用列表模式
+  let isListView = $state(true);
 
   const handleViewToggle = (newIsListView: boolean) => {
     isListView = newIsListView;

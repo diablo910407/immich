@@ -50,8 +50,8 @@
   let selectedAssets = $derived(assetInteraction.selectedAssets);
   let isAssetStackSelected = $derived(selectedAssets.length === 1 && !!selectedAssets[0].stack);
 
-  // 视图切换状态
-  let isListView = $state(false);
+  // 视图切换状态，默认使用列表模式
+  let isListView = $state(true);
 
   const handleViewToggle = (newIsListView: boolean) => {
     isListView = newIsListView;
