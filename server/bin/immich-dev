@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 
 if [ "$IMMICH_ENV" != "development" ]; then
   echo "This command can only be run in development environments"
