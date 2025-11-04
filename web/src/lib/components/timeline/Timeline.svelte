@@ -123,7 +123,7 @@
     asset: TimelineAsset,
   ) => {
     if (isSelectionMode || assetInteraction.selectionActive) {
-      handleSelectAssets(asset);
+      void handleSelectAssets(asset);
       return;
     }
     void navigate({ targetRoute: 'current', assetId: asset.id });
@@ -688,15 +688,29 @@
             />
           {:else}
             <!-- 列表视图 -->
-            <div class="p-4">
+            <div
+              class="p-4"
+              use:resizeObserver={({ height }) => {
+                // 直接测量列表内容实际高度（内层容器），更新月份高度
+                const newHeight = Math.ceil(height);
+                if (!monthGroup.isHeightActual || monthGroup.height !== newHeight) {
+                  monthGroup.height = newHeight;
+                  monthGroup.isHeightActual = true;
+                }
+              }}
+            >
               <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
                 {monthGroup.monthGroupTitle}
               </h3>
-              {#each monthGroup.dayGroups as dayGroup}
-                {#if dayGroup.intersecting && dayGroup.getAssets().length > 0}
-                  {@const assets = dayGroup.getAssets()}
-                  {@const selectedAssets = new Set(assets.filter((asset) => assetInteraction.hasSelectedAsset(asset.id)))}
-                  {@const selectionCandidates = new Set(assets.filter((asset) => assetInteraction.hasSelectionCandidate(asset.id)))}
+              {#each monthGroup.dayGroups as dayGroup (dayGroup.day)}
+                {@const assets = dayGroup.getAssets()}
+                {#if assets.length > 0}
+                  {@const selectedAssets = new Set(
+                    assets.filter((asset) => assetInteraction.hasSelectedAsset(asset.id)),
+                  )}
+                  {@const selectionCandidates = new Set(
+                    assets.filter((asset) => assetInteraction.hasSelectionCandidate(asset.id)),
+                  )}
                   <div class="mb-6">
                     <h4 class="text-md font-medium mb-3 text-gray-700 dark:text-gray-300">
                       {dayGroup.groupTitle}
@@ -715,7 +729,7 @@
                         }
                       }}
                       on:select={({ detail }) => {
-                        handleSelectAssets(detail.asset);
+                        void handleSelectAssets(detail.asset);
                       }}
                       on:mouseEvent={({ detail }) => {
                         handleSelectAssetCandidates(detail.asset);
