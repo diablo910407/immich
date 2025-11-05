@@ -36,7 +36,7 @@
   }: Props = $props();
 
   let scrollbarClass = $derived(scrollbar ? 'immich-scrollbar' : 'scrollbar-hidden');
-  let hasTitleClass = $derived(title ? 'top-16 h-[calc(100%-(--spacing(16)))]' : 'top-0 h-full');
+  let hasTitleClass = $derived((title || buttons) ? 'top-16 h-[calc(100%-(--spacing(16)))]' : 'top-0 h-full');
 </script>
 
 <header>
@@ -65,7 +65,7 @@
     </div>
 
     {#if title || buttons}
-      <div class="absolute flex h-16 w-full place-items-center justify-between border-b p-2 text-dark">
+      <div class="absolute flex h-16 w-full place-items-center justify-between border-b p-2 text-dark bg-white dark:bg-immich-dark-bg z-10">
         <div class="flex gap-2 items-center">
           {#if title}
             <div class="font-medium outline-none pe-8" tabindex="-1" id={headerId}>{title}</div>

@@ -4,6 +4,7 @@
   import MemoryLane from '$lib/components/photos-page/memory-lane.svelte';
   import ButtonContextMenu from '$lib/components/shared-components/context-menu/button-context-menu.svelte';
   import EmptyPlaceholder from '$lib/components/shared-components/empty-placeholder.svelte';
+  import ViewToggleButton from '$lib/components/shared-components/view-toggle-button.svelte';
   import AddToAlbum from '$lib/components/timeline/actions/AddToAlbumAction.svelte';
   import ArchiveAction from '$lib/components/timeline/actions/ArchiveAction.svelte';
   import AssetJobActions from '$lib/components/timeline/actions/AssetJobActions.svelte';
@@ -48,6 +49,22 @@
 
   let selectedAssets = $derived(assetInteraction.selectedAssets);
   let isAssetStackSelected = $derived(selectedAssets.length === 1 && !!selectedAssets[0].stack);
+
+  // 视图切换状态，默认使用列表模式
+  let isListView = $state(true);
+
+  const handleViewToggle = (newIsListView: boolean) => {
+    isListView = newIsListView;
+
+    // 当切换到网格视图时，强制刷新时间线布局，确保缩略图位置与交叉状态正确
+    if (!isListView && timelineManager) {
+      try {
+        timelineManager.refreshLayout();
+      } catch (e) {
+        console.debug('timelineManager.refreshLayout error', e);
+      }
+    }
+  };
   let isLinkActionAvailable = $derived.by(() => {
     const isLivePhoto = selectedAssets.length === 1 && !!selectedAssets[0].livePhotoVideoId;
     const isLivePhotoCandidate =
@@ -88,6 +105,10 @@
 </script>
 
 <UserPageLayout hideNavbar={assetInteraction.selectionActive} showUploadButton scrollbar={false}>
+  {#snippet buttons()}
+    <ViewToggleButton {isListView} onToggle={handleViewToggle} />
+  {/snippet}
+
   <Timeline
     enableRouting={true}
     bind:timelineManager
@@ -96,6 +117,7 @@
     removeAction={AssetAction.ARCHIVE}
     onEscape={handleEscape}
     withStacked
+    {isListView}
   >
     {#if $preferences.memories.enabled}
       <MemoryLane />

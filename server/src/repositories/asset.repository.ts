@@ -598,7 +598,6 @@ export class AssetRepository {
       .with('cte', (qb) =>
         qb
           .selectFrom('asset')
-          .innerJoin('asset_exif', 'asset.id', 'asset_exif.assetId')
           .select((eb) => [
             'asset.duration',
             'asset.id',
@@ -614,24 +613,39 @@ export class AssetRepository {
             'asset.status',
             sql`asset."fileCreatedAt" at time zone 'utc'`.as('fileCreatedAt'),
             eb.fn('encode', ['asset.thumbhash', sql.lit('base64')]).as('thumbhash'),
-            'asset_exif.city',
-            'asset_exif.country',
-            'asset_exif.projectionType',
+            sql<string | null>`(
+              select "city" from "asset_exif" e where e."assetId" = asset."id" limit 1
+            )`.as('city'),
+            sql<string | null>`(
+              select "country" from "asset_exif" e where e."assetId" = asset."id" limit 1
+            )`.as('country'),
+            sql<string | null>`(
+              select "projectionType" from "asset_exif" e where e."assetId" = asset."id" limit 1
+            )`.as('projectionType'),
             eb.fn
               .coalesce(
-                eb
-                  .case()
-                  .when(sql`asset_exif."exifImageHeight" = 0 or asset_exif."exifImageWidth" = 0`)
-                  .then(eb.lit(1))
-                  .when('asset_exif.orientation', 'in', sql<string>`('5', '6', '7', '8', '-90', '90')`)
-                  .then(sql`round(asset_exif."exifImageHeight"::numeric / asset_exif."exifImageWidth"::numeric, 3)`)
-                  .else(sql`round(asset_exif."exifImageWidth"::numeric / asset_exif."exifImageHeight"::numeric, 3)`)
-                  .end(),
+                sql<number>`(
+                  select case
+                    when e."exifImageHeight" = 0 or e."exifImageWidth" = 0 then 1
+                    when e."orientation" in ('5','6','7','8','-90','90') then round(e."exifImageHeight"::numeric / e."exifImageWidth"::numeric, 3)
+                    else round(e."exifImageWidth"::numeric / e."exifImageHeight"::numeric, 3)
+                  end
+                  from "asset_exif" e where e."assetId" = asset."id" limit 1
+                )`,
                 eb.lit(1),
               )
               .as('ratio'),
           ])
-          .$if(!!options.withCoordinates, (qb) => qb.select(['asset_exif.latitude', 'asset_exif.longitude']))
+          .$if(!!options.withCoordinates, (qb) =>
+            qb.select((eb) => [
+              sql<number | null>`(
+                select "latitude" from "asset_exif" e where e."assetId" = asset."id" limit 1
+              )`.as('latitude'),
+              sql<number | null>`(
+                select "longitude" from "asset_exif" e where e."assetId" = asset."id" limit 1
+              )`.as('longitude'),
+            ]),
+          )
           .where('asset.deletedAt', options.isTrashed ? 'is not' : 'is', null)
           .$if(options.visibility == undefined, withDefaultVisibility)
           .$if(!!options.visibility, (qb) => qb.where('asset.visibility', '=', options.visibility!))
