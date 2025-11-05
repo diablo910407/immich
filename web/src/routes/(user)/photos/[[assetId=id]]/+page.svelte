@@ -55,6 +55,15 @@
 
   const handleViewToggle = (newIsListView: boolean) => {
     isListView = newIsListView;
+
+    // 当切换到网格视图时，强制刷新时间线布局，确保缩略图位置与交叉状态正确
+    if (!isListView && timelineManager) {
+      try {
+        timelineManager.refreshLayout();
+      } catch (e) {
+        console.debug('timelineManager.refreshLayout error', e);
+      }
+    }
   };
   let isLinkActionAvailable = $derived.by(() => {
     const isLivePhoto = selectedAssets.length === 1 && !!selectedAssets[0].livePhotoVideoId;
