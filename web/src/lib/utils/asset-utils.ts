@@ -295,8 +295,13 @@ export function getFilenameExtension(filename: string): string {
  * Returns the filename of an asset including file extension
  */
 export function getAssetFilename(asset: AssetResponseDto): string {
-  const fileExtension = getFilenameExtension(asset.originalPath);
-  return `${asset.originalFileName}.${fileExtension}`;
+  const baseName = asset.originalFileName || '';
+  const hasExtInName = getFilenameExtension(baseName) !== '';
+  if (hasExtInName) {
+    return baseName;
+  }
+  const extFromPath = getFilenameExtension(asset.originalPath || '');
+  return extFromPath ? `${baseName}.${extFromPath}` : baseName || asset.id;
 }
 
 function isRotated90CW(orientation: number) {
