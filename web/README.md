@@ -12,6 +12,8 @@ This repository adds a lightweight, local-only person rating UI to the People pa
 - New component `src/lib/elements/fractional-stars.svelte` renders read-only fractional star values for overall score.
 - New component `src/lib/components/faces-page/person-rating.svelte` shows three interactive lines (looks/body/content) and a computed overall.
 - Integrated on `routes/(user)/people/+page.svelte` below each `PeopleCard`.
+ - Default sort on People page: unrated (`overall = 0`) first; then by `overall` (desc, two-decimal precision), breaking ties by `looks` (desc).
+ - Sorting behavior: changing stars on the current page does not re-order the grid; the new order applies when you re-enter the People page.
 
 Notes:
 - Ratings are stored client-side only and do not modify external library metadata.

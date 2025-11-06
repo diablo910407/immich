@@ -26,6 +26,7 @@
   import { quintOut } from 'svelte/easing';
   import { fly } from 'svelte/transition';
   import type { PageData } from './$types';
+  import { sortPeopleByRating } from '$lib/utils/person-sort';
 
   interface Props {
     data: PageData;
@@ -234,6 +235,7 @@
   let visiblePeople = $derived(people.filter((people) => !people.isHidden));
   let countVisiblePeople = $derived(searchName ? searchedPeopleLocal.length : data.people.total - data.people.hidden);
   let showPeople = $derived(searchName ? searchedPeopleLocal : visiblePeople);
+  let showPeopleSorted = $derived(sortPeopleByRating(showPeople));
 
   const onNameChangeInputFocus = (person: PersonResponseDto) => {
     editingPerson = person;
@@ -348,7 +350,7 @@
 
   {#if countVisiblePeople > 0 && (!searchName || searchedPeopleLocal.length > 0)}
     <PeopleInfiniteScroll
-      people={showPeople}
+      people={showPeopleSorted}
       hasNextPage={!!nextPage && !searchName}
       {loadNextPage}
       gridClass="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7"
