@@ -351,7 +351,7 @@
       people={showPeople}
       hasNextPage={!!nextPage && !searchName}
       {loadNextPage}
-      gridClass="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
+      gridClass="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7"
     >
       {#snippet children({ person })}
         <div
@@ -365,7 +365,7 @@
             onToggleFavorite={() => handleToggleFavorite(person)}
           />
 
-          <div class="mt-2">
+          <div class="mt-1">
             <PersonRating {person} />
           </div>
 

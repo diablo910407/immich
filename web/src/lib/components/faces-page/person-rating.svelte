@@ -48,12 +48,11 @@
       <StarRating count={5} rating={rating.content} showClear={false} onRating={(v) => set('content', v)} />
     </div>
   </div>
-  <div class="row text-primary">
+  <div class="row text-primary" data-overall={rating.overall.toFixed(2)}>
     <span class="label">{labels.overall}：</span>
     <div class="stars-wrap">
-      <FractionalStars value={rating.overall} count={5} size="1.5em" />
+      <FractionalStars value={rating.overall} count={5} size="1.35em" />
     </div>
-    <span class="score">{rating.overall.toFixed(2)}</span>
   </div>
 </div>
 
@@ -61,18 +60,19 @@
   .rating-box {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    padding-top: 6px;
+    gap: 3px;
+    padding-top: 3px;
     /* 缩小整体字体以让星星在窄卡片上不溢出 */
-    font-size: 0.85rem;
+    font-size: 0.76rem;
+    line-height: 1.1;
   }
   .row {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 3px;
   }
   .label {
-    min-width: 36px;
+    min-width: 32px;
     color: var(--immich-fg-muted, #666);
     font-size: 0.875rem;
     font-weight: 600; /* 维度标签加粗：颜值、身材、内容、综合 */
@@ -82,11 +82,5 @@
     min-width: 0; /* 允许在 flex 布局中收缩，避免溢出 */
     display: inline-flex;
   }
-  .score {
-    margin-left: 4px;
-    color: var(--immich-fg-default, #222);
-    font-size: 0.875rem;
-    flex-shrink: 0;
-    font-weight: 500; /* 综合分数字体与人物名一致（font-medium） */
-  }
+  /* 综合分数不再显示，但通过 data-overall 保留两位小数以便后续使用 */
 </style>
