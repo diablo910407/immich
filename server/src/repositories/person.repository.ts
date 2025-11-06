@@ -449,6 +449,7 @@ export class PersonRepository {
               faceAssetId: eb.ref('excluded.faceAssetId'),
               isHidden: eb.ref('excluded.isHidden'),
               isFavorite: eb.ref('excluded.isFavorite'),
+              rate: eb.ref('excluded.rate'),
               color: eb.ref('excluded.color'),
             },
             people[0],

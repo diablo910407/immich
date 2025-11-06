@@ -6,15 +6,12 @@ When developing locally, you will run a SvelteKit Node.js server. When this proj
 
 ## Person rating UI
 
-This repository adds a lightweight, local-only person rating UI to the People page:
+本仓库在 People 页面增加了轻量评分功能，并与后端同步：
 
-- New store at `src/lib/stores/person-rating.store.ts` persists ratings per person in `localStorage`.
-- New component `src/lib/elements/fractional-stars.svelte` renders read-only fractional star values for overall score.
-- New component `src/lib/components/faces-page/person-rating.svelte` shows three interactive lines (looks/body/content) and a computed overall.
-- Integrated on `routes/(user)/people/+page.svelte` below each `PeopleCard`.
- - Default sort on People page: unrated (`overall = 0`) first; then by `overall` (desc, two-decimal precision), breaking ties by `looks` (desc).
- - Sorting behavior: changing stars on the current page does not re-order the grid; the new order applies when you re-enter the People page.
+- 评分存储：在 `src/lib/stores/person-rating.store.ts` 本地维护每个人的评分（`looks/body/content`），并计算只读 `overall` 值，持久化到 `localStorage`。
+- 组件展示：`src/lib/elements/fractional-stars.svelte` 用于显示综合的只读小数星星；`src/lib/components/faces-page/person-rating.svelte` 提供交互星级并在变更后调用后端接口写入 `person.rate`（`jsonb`）。
+- 页面集成：在 `routes/(user)/people/+page.svelte` 中，初次加载与无限滚动时将后端返回的 `person.rate` 种子到本地评分 store；排序逻辑依赖评分 store，评分变化后列表会随之更新。
 
-Notes:
-- Ratings are stored client-side only and do not modify external library metadata.
-- Dev server runs on `http://localhost:3000/` when using the development Docker compose.
+重要说明：
+- 外部库的元数据为只读，不做任何修改。评分写入后端的 `person.rate` 字段（`jsonb`），而非修改外部库中的 EXIF 等元数据。
+- 使用开发 Docker compose 时，Web 开发服务端口为 `http://localhost:3000/`。

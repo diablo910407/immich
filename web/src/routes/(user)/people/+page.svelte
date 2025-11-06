@@ -27,6 +27,8 @@
   import { fly } from 'svelte/transition';
   import type { PageData } from './$types';
   import { sortPeopleByRating } from '$lib/utils/person-sort';
+  import { personRatingStore } from '$lib/stores/person-rating.store';
+  import { SvelteSet } from 'svelte/reactivity';
 
   interface Props {
     data: PageData;
@@ -235,7 +237,44 @@
   let visiblePeople = $derived(people.filter((people) => !people.isHidden));
   let countVisiblePeople = $derived(searchName ? searchedPeopleLocal.length : data.people.total - data.people.hidden);
   let showPeople = $derived(searchName ? searchedPeopleLocal : visiblePeople);
+  // 仅在列表数据变化时刷新排序，评分变动不触发
   let showPeopleSorted = $derived(sortPeopleByRating(showPeople));
+
+  
+
+  // 将后端返回的评分数据种子到本地 store（避免修改外部库元数据）
+  const seededIds = new SvelteSet<string>();
+  type PersonWithRate = PersonResponseDto & {
+    rate?: {
+      looks?: number;
+      body?: number;
+      content?: number;
+      overall?: number;
+      updatedAt?: string;
+    };
+  };
+  function seedRatingsFromServer(list: PersonResponseDto[]) {
+    for (const person of list) {
+      if (seededIds.has(person.id)) {
+        continue;
+      }
+      const rate = (person as PersonWithRate).rate;
+      if (rate && typeof rate === 'object') {
+        const looks = Number(rate.looks ?? 0);
+        const body = Number(rate.body ?? 0);
+        const content = Number(rate.content ?? 0);
+        personRatingStore.setDimension(person.id, 'looks', looks);
+        personRatingStore.setDimension(person.id, 'body', body);
+        personRatingStore.setDimension(person.id, 'content', content);
+      }
+      seededIds.add(person.id);
+    }
+  }
+
+  // 初始以及无限滚动加载更多时种子评分
+  $effect(() => {
+    seedRatingsFromServer(people);
+  });
 
   const onNameChangeInputFocus = (person: PersonResponseDto) => {
     editingPerson = person;

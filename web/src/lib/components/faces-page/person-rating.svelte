@@ -3,6 +3,9 @@
   import FractionalStars from '$lib/elements/fractional-stars.svelte';
   import type { PersonResponseDto } from '@immich/sdk';
   import { personRatingStore } from '$lib/stores/person-rating.store';
+  import { updatePersonRate } from '$lib/services/person-rate.service';
+  import { handleError } from '$lib/utils/handle-error';
+  import { t } from 'svelte-i18n';
   import { onMount, onDestroy } from 'svelte';
 
   export let person: PersonResponseDto;
@@ -24,8 +27,14 @@
   });
   onDestroy(() => unsubscribe?.());
 
-  function set(dim: 'looks' | 'body' | 'content', value: number) {
+  async function set(dim: 'looks' | 'body' | 'content', value: number) {
     personRatingStore.setDimension(person.id, dim, value);
+    const current = personRatingStore.ensure(person.id);
+    try {
+      await updatePersonRate(person.id, current);
+    } catch (error) {
+      handleError(error, $t('errors.cant_apply_changes'));
+    }
   }
 </script>
 
@@ -33,19 +42,19 @@
   <div class="row text-primary">
     <span class="label">{labels.looks}：</span>
     <div class="stars-wrap">
-      <StarRating count={5} rating={rating.looks} showClear={false} onRating={(v) => set('looks', v)} />
+      <StarRating count={5} rating={rating.looks} showClear={false} onRating={(v) => void set('looks', v)} />
     </div>
   </div>
   <div class="row text-primary">
     <span class="label">{labels.body}：</span>
     <div class="stars-wrap">
-      <StarRating count={5} rating={rating.body} showClear={false} onRating={(v) => set('body', v)} />
+      <StarRating count={5} rating={rating.body} showClear={false} onRating={(v) => void set('body', v)} />
     </div>
   </div>
   <div class="row text-primary">
     <span class="label">{labels.content}：</span>
     <div class="stars-wrap">
-      <StarRating count={5} rating={rating.content} showClear={false} onRating={(v) => set('content', v)} />
+      <StarRating count={5} rating={rating.content} showClear={false} onRating={(v) => void set('content', v)} />
     </div>
   </div>
   <div class="row text-primary" data-overall={rating.overall.toFixed(2)}>

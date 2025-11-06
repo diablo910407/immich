@@ -32,3 +32,4 @@ vite.config.js.timestamp-*
 docker/docker-compose.dev.yml
 docker/docker-compose.yml
 .trae/
+server/resources/local-data/

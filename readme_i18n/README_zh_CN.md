@@ -136,3 +136,10 @@
 <a href="https://github.com/alextran1502/immich/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=immich-app/immich" width="100%"/>
 </a>
+
+## 本地评分持久化（开发环境）
+
+- 为避免仅依赖浏览器 `LocalStorage` 导致清理缓存后人物评分数据丢失，后端在更新人物评分（`person.rate`）时会同步将评分追加写入本地 NDJSON 文件。
+- 文件路径：`server/resources/local-data/person-ratings.ndjson`
+- 文件格式：一行一个 JSON 记录，包含 `id`、`ownerId`、`rate`、`updatedAt` 字段，便于检索与备份；NDJSON 具有可流式写入、易合并、易解析的优势，适合高并发环境下的无锁追加。
+- 该文件仅作为冗余备份，不会修改外部只读图库的原始元数据；数据库中的 `person.rate` 仍为权威来源。
