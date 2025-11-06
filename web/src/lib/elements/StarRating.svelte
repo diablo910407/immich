@@ -9,10 +9,11 @@
     count?: number;
     rating: number;
     readOnly?: boolean;
+    showClear?: boolean;
     onRating: (rating: number) => void | undefined;
   }
 
-  let { count = 5, rating, readOnly = false, onRating }: Props = $props();
+  let { count = 5, rating, readOnly = false, showClear = true, onRating }: Props = $props();
 
   let ratingSelection = $derived(rating);
   let hoverRating = $state(0);
@@ -107,7 +108,7 @@
     {/each}
   </div>
 </fieldset>
-{#if ratingSelection > 0 && !readOnly}
+{#if ratingSelection > 0 && !readOnly && showClear}
   <button
     type="button"
     onclick={() => {
