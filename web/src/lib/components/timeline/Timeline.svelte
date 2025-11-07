@@ -19,7 +19,7 @@
   import { assetViewingStore } from '$lib/stores/asset-viewing.store';
   import { isSelectingAllAssets } from '$lib/stores/assets-store.svelte';
   import { mobileDevice } from '$lib/stores/mobile-device.svelte';
-  import { isAssetViewerRoute, navigate } from '$lib/utils/navigation';
+  import { isAssetViewerRoute } from '$lib/utils/navigation';
   import { getTimes, type ScrubberListener } from '$lib/utils/timeline-util';
   import { type AlbumResponseDto, type PersonResponseDto } from '@immich/sdk';
   import { DateTime } from 'luxon';
@@ -27,6 +27,7 @@
   import type { UpdatePayload } from 'vite';
   import TimelineDateGroup from './TimelineDateGroup.svelte';
   import PersonGroupedListView from '$lib/components/assets/person-grouped-list-view.svelte';
+  import type { PersonSortDimension } from '$lib/utils/person-group-sort-by';
 
   interface Props {
     isSelectionMode?: boolean;
@@ -68,6 +69,8 @@
         asset: TimelineAsset,
       ) => void,
     ) => void;
+    // 列表模式下排序维度
+    sortByDimension?: PersonSortDimension;
   }
 
   let {
@@ -91,6 +94,8 @@
     empty,
     customLayout,
     onThumbnailClick,
+    // 列表排序维度，仅在 viewMode === 'list' 时生效
+    sortByDimension = 'overall',
   }: Props = $props();
 
   timelineManager = new TimelineManager();
@@ -106,6 +111,7 @@
 
   // 视图模式基于传入的isListView属性
   const viewMode = $derived(isListView ? 'list' : 'grid');
+  const listSortDimension = $derived(sortByDimension ?? 'overall');
 
   // 添加调试日志
   $effect(() => {
@@ -695,6 +701,7 @@
       {singleSelect}
       {showArchiveIcon}
       onSelect={onSelect}
+      sortBy={listSortDimension}
     />
   {/if}
 </section>

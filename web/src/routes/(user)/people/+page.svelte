@@ -9,6 +9,7 @@
   import PersonRating from '$lib/components/faces-page/person-rating.svelte';
   import PeopleInfiniteScroll from '$lib/components/faces-page/people-infinite-scroll.svelte';
   import SearchPeople from '$lib/components/faces-page/people-search.svelte';
+  import SortDimensionButtons from '$lib/components/photos-page/sort-dimension-buttons.svelte';
   import UserPageLayout from '$lib/components/layouts/user-page-layout.svelte';
   import { ActionQueryParameterValue, AppRoute, QueryParameter, SessionStorageKey } from '$lib/constants';
   import PersonEditBirthDateModal from '$lib/modals/PersonEditBirthDateModal.svelte';
@@ -26,7 +27,7 @@
   import { quintOut } from 'svelte/easing';
   import { fly } from 'svelte/transition';
   import type { PageData } from './$types';
-  import { sortPeopleByRating } from '$lib/utils/person-sort';
+  import { sortPersonGroupsBy, sortPersonGroupsDefault, type PersonSortDimension } from '$lib/utils/person-group-sort-by';
   import { personRatingStore } from '$lib/stores/person-rating.store';
   import { SvelteSet } from 'svelte/reactivity';
 
@@ -48,6 +49,8 @@
   let searchedPeopleLocal: PersonResponseDto[] = $state([]);
   let innerHeight = $state(0);
   let searchPeopleElement = $state<ReturnType<typeof SearchPeople>>();
+  // 排序维度，默认综合，与 Photos 页一致
+  let sortByDimension: PersonSortDimension = $state('overall');
 
   onMount(() => {
     const getSearchedPeople = $page.url.searchParams.get(QueryParameter.SEARCHED_PEOPLE);
@@ -238,7 +241,13 @@
   let countVisiblePeople = $derived(searchName ? searchedPeopleLocal.length : data.people.total - data.people.hidden);
   let showPeople = $derived(searchName ? searchedPeopleLocal : visiblePeople);
   // 仅在列表数据变化时刷新排序，评分变动不触发
-  let showPeopleSorted = $derived(sortPeopleByRating(showPeople));
+  let showPeopleSorted = $derived(
+    sortByDimension === 'overall' ? sortPersonGroupsDefault(showPeople) : sortPersonGroupsBy(showPeople, sortByDimension),
+  );
+  // 调试日志：维度与排序人数
+  $effect(() => {
+    console.log('[People] sortByDimension =', sortByDimension, ', sorted count =', showPeopleSorted.length);
+  });
 
   
 
@@ -376,6 +385,13 @@
             />
           </div>
         </div>
+        <SortDimensionButtons
+          selected={sortByDimension}
+          onChange={(d) => {
+            sortByDimension = d;
+            console.log('[People] 切换排序维度为:', d);
+          }}
+        />
         <Button
           leadingIcon={mdiEyeOutline}
           onclick={() => (selectHidden = !selectHidden)}

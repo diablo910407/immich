@@ -3,7 +3,7 @@
   import { navigate } from '$lib/utils/navigation';
   import { toTimelineAsset } from '$lib/utils/timeline-util';
   import { getAssetFilename } from '$lib/utils/asset-utils';
-  import { sortPersonGroupsForList } from '$lib/utils/person-group-sort';
+  import { sortPersonGroupsDefault, sortPersonGroupsBy, type PersonSortDimension } from '$lib/utils/person-group-sort-by';
   import { handleError } from '$lib/utils/handle-error';
   import {
     getAllPeople,
@@ -26,6 +26,8 @@
     singleSelect?: boolean;
     showArchiveIcon?: boolean;
     onSelect?: (asset: TimelineAsset) => void;
+    // 列表排序维度，仅在人物分组列表模式下使用
+    sortBy?: PersonSortDimension;
   }
 
   let {
@@ -34,6 +36,7 @@
     singleSelect = false,
     showArchiveIcon = false,
     onSelect = () => {},
+    sortBy = 'overall',
   }: Props = $props();
 
   type PersonGroup = {
@@ -73,9 +76,9 @@
     try {
       // 仅加载未隐藏人物，保证照片界面不显示被隐藏人物
       const { people } = await getAllPeople({ withHidden: false });
-      const sorted = sortPersonGroupsForList(people);
+      const sorted = sortBy === 'overall' ? sortPersonGroupsDefault(people) : sortPersonGroupsBy(people, sortBy);
       groups = sorted.map((p) => ({ person: p, assets: [], page: 1, hasNext: true, loading: false, loadedOnce: false }));
-      console.log('[PersonList] 初始化人物组数量(不含隐藏):', groups.length);
+      console.log('[PersonList] 初始化人物组数量(不含隐藏):', groups.length, '排序维度:', sortBy);
       // 初始化评分映射，避免首次渲染为空
       for (const p of sorted) {
         ratingMap[p.id] = personRatingStore.ensure(p.id);
@@ -145,12 +148,34 @@
 
   $effect(() => { void initGroups(); });
 
+  // 监听排序维度变更，动态重排已有分组（不重新拉取数据）
+  $effect(() => {
+    // 初始化阶段跳过
+    if (isInitializing || groups.length === 0) {
+      return;
+    }
+    const people = groups.map((g) => g.person);
+    const sorted = sortBy === 'overall' ? sortPersonGroupsDefault(people) : sortPersonGroupsBy(people, sortBy);
+    // 使用排序后的顺序重排 groups，但保留其 assets、分页等状态
+    const orderMap = new Map(sorted.map((p, idx) => [p.id, idx]));
+    groups.sort((ga, gb) => (orderMap.get(ga.person.id)! - orderMap.get(gb.person.id)!));
+    console.log('[PersonList] 切换排序维度为:', sortBy, '已重排分组数量:', groups.length);
+  });
+
   // 订阅评分变更（如用户在其他界面更新评分），保持标题区域展示最新值
   $effect(() => {
     const unsub = personRatingStore.subscribe((state) => {
       for (const id in state) {
         ratingMap[id] = state[id];
         console.debug('[PersonList] 评分更新:', id, state[id]);
+      }
+      // 分数更新后也根据当前维度重排
+      if (!isInitializing && groups.length > 0) {
+        const people = groups.map((g) => g.person);
+        const sorted = sortBy === 'overall' ? sortPersonGroupsDefault(people) : sortPersonGroupsBy(people, sortBy);
+        const orderMap = new Map(sorted.map((p, idx) => [p.id, idx]));
+        groups.sort((ga, gb) => (orderMap.get(ga.person.id)! - orderMap.get(gb.person.id)!));
+        console.log('[PersonList] 评分变更触发重排，维度:', sortBy);
       }
     });
     return () => unsub();
