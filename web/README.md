@@ -19,26 +19,26 @@ When developing locally, you will run a SvelteKit Node.js server. When this proj
 
 ## Photos 页面排序（列表模式）
 
-在 `routes/(user)/photos/[[assetId=id]]/+page.svelte` 的列表模式下，新增“按不同维度排序”按钮，位于视图切换按钮同排位置：
+在 `routes/(user)/photos/[[assetId=id]]/+page.svelte` 的列表模式下，新增“排序：下拉菜单”，位于视图切换控件同排位置：
 
-- 排序维度：`综合 / 颜值 / 身材 / 内容`；
-- 默认排序：综合分 `overall` 从高到低（并在分数相同情况下按 `looks` 从高到低）；
-- 当选择 `颜值/身材/内容` 时，以该维度从高到低排序，遇到相同分数时按综合分 `overall` 从高到低再排；
-- 网格模式保持时间线展示，不提供维度排序按钮；
+- 排序维度：`综合评分 / 颜值评分 / 身材评分 / 内容评分`；
+- 默认排序：综合分 `overall` 从高到低（分数相同时按 `looks` 从高到低）；
+- 当选择 `颜值/身材/内容` 时，以该维度从高到低排序，遇到相同分数时按综合分 `overall` 再排；
+- 网格模式保持时间线展示，不提供维度排序下拉；
 - 相关文件：
-  - 组件：`src/lib/components/photos-page/sort-dimension-buttons.svelte`
+  - 下拉组件：`src/lib/components/photos-page/sort-dimension-buttons.svelte`
   - 列表视图：`src/lib/components/assets/person-grouped-list-view.svelte`
   - 排序工具：`src/lib/utils/person-group-sort-by.ts`
 
 ## People 页面排序
 
-在 `routes/(user)/people/+page.svelte` 顶部工具栏增加同样的排序按钮，规则与 Photos 页一致：
+在 `routes/(user)/people/+page.svelte` 顶部工具栏增加“排序：下拉菜单”，规则与 Photos 页一致：
 
-- 排序维度：`综合 / 颜值 / 身材 / 内容`；
+- 排序维度：`综合评分 / 颜值评分 / 身材评分 / 内容评分`；
 - 默认排序：综合分 `overall` 从高到低（分数相同按 `looks` 从高到低）；
 - 当选择 `颜值/身材/内容` 时，以该维度从高到低排序，遇到相同分数时按综合分 `overall` 再排；
 - 无限滚动：仍按当前排序维度视图呈现，不影响分页加载；
 - 相关文件：
   - 页面：`src/routes/(user)/people/+page.svelte`
-  - 按钮组件：`src/lib/components/photos-page/sort-dimension-buttons.svelte`
+  - 下拉组件：`src/lib/components/photos-page/sort-dimension-buttons.svelte`
   - 排序工具：`src/lib/utils/person-group-sort-by.ts`

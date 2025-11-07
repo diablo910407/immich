@@ -112,7 +112,6 @@
 <UserPageLayout hideNavbar={assetInteraction.selectionActive} showUploadButton scrollbar={false}>
   {#snippet buttons()}
     <div class="flex items-center gap-3">
-      <ViewToggleButton {isListView} onToggle={handleViewToggle} />
       {#if isListView}
         <SortDimensionButtons
           selected={sortByDimension}
@@ -122,6 +121,7 @@
           }}
         />
       {/if}
+      <ViewToggleButton {isListView} onToggle={handleViewToggle} />
     </div>
   {/snippet}
 

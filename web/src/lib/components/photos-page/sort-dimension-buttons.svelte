@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { PersonSortDimension } from '$lib/utils/person-group-sort-by';
-  import { Button } from '@immich/ui';
+  import Dropdown from '$lib/elements/Dropdown.svelte';
+  import { mdiChevronDown } from '@mdi/js';
 
   interface Props {
     selected?: PersonSortDimension;
@@ -9,29 +10,44 @@
 
   let { selected = 'overall', onChange = () => {} }: Props = $props();
 
-  const options: { id: PersonSortDimension; label: string }[] = [
-    { id: 'overall', label: '综合' },
-    { id: 'looks', label: '颜值' },
-    { id: 'body', label: '身材' },
-    { id: 'content', label: '内容' },
-  ];
+  const options: PersonSortDimension[] = ['overall', 'looks', 'body', 'content'];
 
-  const handleSelect = (id: PersonSortDimension) => {
-    console.log('[SortButtons] 选择排序维度:', id);
-    onChange(id);
+  const labelOf = (dim: PersonSortDimension): string => {
+    switch (dim) {
+      case 'overall': {
+        return '综合评分';
+      }
+      case 'looks': {
+        return '颜值评分';
+      }
+      case 'body': {
+        return '身材评分';
+      }
+      case 'content': {
+        return '内容评分';
+      }
+      default: {
+        // 防御性返回，理论上不会触发
+        return '综合评分';
+      }
+    }
+  };
+
+  const handleSelect = (dim: PersonSortDimension) => {
+    console.log('[SortDropdown] 选择排序维度:', dim);
+    onChange(dim);
   };
 </script>
 
 <div class="flex items-center gap-2">
-  {#each options as opt (opt.id)}
-    <Button
-      size="small"
-      variant="ghost"
-      color={selected === opt.id ? 'primary' : 'secondary'}
-      onclick={() => handleSelect(opt.id)}
-    >{opt.label}</Button>
-  {/each}
-  <!-- 轻微分隔符，与视图切换按钮保持视觉平衡 -->
+  <span class="text-sm text-primary">排序：</span>
+  <Dropdown
+    {options}
+    selectedOption={selected}
+    hideTextOnSmallScreen={false}
+    render={(dim) => ({ title: labelOf(dim), icon: mdiChevronDown })}
+    onSelect={(dim) => handleSelect(dim as PersonSortDimension)}
+  />
 </div>
 
 <style>
