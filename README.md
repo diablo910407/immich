@@ -118,6 +118,11 @@ Read more about translations [here](https://docs.immich.app/developer/translatio
 
 ## Star history
 
+## Local customization
+
+- Photos page list view: grouped by identified people instead of timeline; within each person group, assets are sorted by file type (photos first) then filename (ascending). Different person groups are sorted by overall rating (descending), then looks rating (descending). Grid view remains unchanged.
+- Implementation is frontend-only and uses lazy loading per person group to improve performance on large libraries.
+
 <a href="https://star-history.com/#immich-app/immich&Date">
  <picture>
    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=immich-app/immich&type=Date&theme=dark" />
