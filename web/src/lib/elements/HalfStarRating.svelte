@@ -10,9 +10,10 @@
     showClear?: boolean;
     onRating: (rating: number) => void | undefined;
     size?: string;
+    color?: string;
   }
 
-  let { count = 5, rating, readOnly = false, showClear = true, onRating, size = '1.5em' }: Props = $props();
+  let { count = 5, rating, readOnly = false, showClear = true, onRating, size = '1.5em', color }: Props = $props();
 
   let ratingSelection = $derived(rating);
   let hoverValue = $state(0);
@@ -23,6 +24,9 @@
   const clamp = (v: number) => Math.max(0, Math.min(count, v));
   const displayValue = $derived(hoverValue > 0 ? hoverValue : ratingSelection);
   const fills = $derived(Array.from({ length: count }, (_, i) => Math.max(0, Math.min(1, displayValue - i)) * 100));
+
+  // 允许从外部传入颜色；未传入时使用 currentcolor 以继承父元素颜色
+  const fillColor = $derived(color ?? 'currentcolor');
 
   const select = (value: number) => {
     if (readOnly) {
@@ -84,7 +88,7 @@
       >
         <Icon icon={starIcon} size={size} strokeWidth={1} color="transparent" strokeColor="#c1cce8" class="star bg" />
         <div class="fill-clip" style={`width:${fills[i]}%`} aria-hidden="true">
-          <Icon icon={starIcon} size={size} strokeWidth={1} color="currentcolor" strokeColor="currentcolor" class="star fill" />
+          <Icon icon={starIcon} size={size} strokeWidth={1} color={fillColor} strokeColor={fillColor} class="star fill" />
         </div>
         {#if !readOnly}
           <!-- 左半星：0.5 分 -->

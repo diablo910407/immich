@@ -22,6 +22,12 @@
 
   // 统一四行星星尺寸，并适当加大前三行的星星
   const starSize: string = '1.65em';
+  const starColor = {
+    looks: '#FF69B4',
+    body: '#FF7F50',
+    content: '#4169E1',
+    overall: '#FFD700',
+  } as const;
 
   onMount(() => {
     unsubscribe = personRatingStore.subscribe((state) => {
@@ -44,25 +50,25 @@
 <div class="rating-box">
   <div class="row text-primary">
     <span class="label">{labels.looks}：</span>
-    <div class="stars-wrap">
-      <HalfStarRating count={5} rating={rating.looks} showClear={false} size={starSize} onRating={(v: number) => void set('looks', v)} />
+    <div class="stars-wrap" style={`color:${starColor.looks}`}>
+      <HalfStarRating count={5} rating={rating.looks} showClear={false} size={starSize} color={starColor.looks} onRating={(v: number) => void set('looks', v)} />
     </div>
   </div>
   <div class="row text-primary">
     <span class="label">{labels.body}：</span>
-    <div class="stars-wrap">
-      <HalfStarRating count={5} rating={rating.body} showClear={false} size={starSize} onRating={(v: number) => void set('body', v)} />
+    <div class="stars-wrap" style={`color:${starColor.body}`}>
+      <HalfStarRating count={5} rating={rating.body} showClear={false} size={starSize} color={starColor.body} onRating={(v: number) => void set('body', v)} />
     </div>
   </div>
   <div class="row text-primary">
     <span class="label">{labels.content}：</span>
-    <div class="stars-wrap">
-      <HalfStarRating count={5} rating={rating.content} showClear={false} size={starSize} onRating={(v: number) => void set('content', v)} />
+    <div class="stars-wrap" style={`color:${starColor.content}`}>
+      <HalfStarRating count={5} rating={rating.content} showClear={false} size={starSize} color={starColor.content} onRating={(v: number) => void set('content', v)} />
     </div>
   </div>
   <div class="row text-primary" data-overall={rating.overall.toFixed(2)}>
     <span class="label">{labels.overall}：</span>
-    <div class="stars-wrap">
+    <div class="stars-wrap" style={`color:${starColor.overall}`}>
       <FractionalStars value={rating.overall} count={5} size={starSize} />
     </div>
   </div>
