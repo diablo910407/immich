@@ -39,18 +39,59 @@ function ensureDirs() {
   }
 }
 
+// 维护一个内存缓存，按人物 ID 覆盖更新，落盘时写回整文件，确保每人仅一条记录
+type PersonRateRecord = { id: string; ownerId?: string; rate: PersonRatePayload; updatedAt: string };
+let cache: Map<string, PersonRateRecord> | undefined;
+
+function loadCache() {
+  ensureDirs();
+  if (cache) return;
+  cache = new Map<string, PersonRateRecord>();
+  try {
+    const content = fs.readFileSync(DATA_FILE, { encoding: 'utf8' });
+    const lines = content.split(/\r?\n/).filter((l) => l.trim().length > 0);
+    for (const line of lines) {
+      try {
+        const obj = JSON.parse(line) as PersonRateRecord;
+        if (obj?.id) {
+          cache.set(obj.id, obj);
+        }
+      } catch {
+        // 跳过坏行
+      }
+    }
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[person-rate-file] 读取缓存失败', error);
+  }
+}
+
+function flushCache() {
+  if (!cache) return;
+  try {
+    const lines = Array.from(cache.values()).map((r) => JSON.stringify(r));
+    const content = lines.length > 0 ? lines.join('\n') + '\n' : '';
+    fs.writeFileSync(DATA_FILE, content, { encoding: 'utf8' });
+    // eslint-disable-next-line no-console
+    console.debug('[person-rate-file] 已覆盖写回', { count: cache.size });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[person-rate-file] 覆盖写回失败', error);
+  }
+}
+
 export function persistPersonRateToFile(personId: string, ownerId: string | undefined, rate: PersonRatePayload) {
   ensureDirs();
-  const line = JSON.stringify({ id: personId, ownerId, rate, updatedAt: new Date().toISOString() });
-  fs.appendFile(DATA_FILE, line + '\n', { encoding: 'utf8' }, (error) => {
-    if (error) {
-      // eslint-disable-next-line no-console
-      console.error('[person-rate-file] 写入失败', error);
-    } else {
-      // eslint-disable-next-line no-console
-      console.debug('[person-rate-file] 已写入', { personId });
-    }
-  });
+  loadCache();
+  const prev = cache!.get(personId);
+  const record: PersonRateRecord = {
+    id: personId,
+    ownerId: ownerId ?? prev?.ownerId,
+    rate,
+    updatedAt: new Date().toISOString(),
+  };
+  cache!.set(personId, record);
+  flushCache();
 }
 
 export function getPersonRateDataFilePath() {

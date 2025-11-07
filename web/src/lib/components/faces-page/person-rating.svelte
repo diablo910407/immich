@@ -1,5 +1,5 @@
 <script lang="ts">
-  import StarRating from '$lib/elements/StarRating.svelte';
+  import HalfStarRating from '$lib/elements/HalfStarRating.svelte';
   import FractionalStars from '$lib/elements/fractional-stars.svelte';
   import type { PersonResponseDto } from '@immich/sdk';
   import { personRatingStore } from '$lib/stores/person-rating.store';
@@ -19,6 +19,9 @@
 
   let rating = personRatingStore.ensure(person.id);
   let unsubscribe: (() => void) | undefined;
+
+  // 统一四行星星尺寸，并适当加大前三行的星星
+  const starSize: string = '1.65em';
 
   onMount(() => {
     unsubscribe = personRatingStore.subscribe((state) => {
@@ -42,25 +45,25 @@
   <div class="row text-primary">
     <span class="label">{labels.looks}：</span>
     <div class="stars-wrap">
-      <StarRating count={5} rating={rating.looks} showClear={false} onRating={(v) => void set('looks', v)} />
+      <HalfStarRating count={5} rating={rating.looks} showClear={false} size={starSize} onRating={(v: number) => void set('looks', v)} />
     </div>
   </div>
   <div class="row text-primary">
     <span class="label">{labels.body}：</span>
     <div class="stars-wrap">
-      <StarRating count={5} rating={rating.body} showClear={false} onRating={(v) => void set('body', v)} />
+      <HalfStarRating count={5} rating={rating.body} showClear={false} size={starSize} onRating={(v: number) => void set('body', v)} />
     </div>
   </div>
   <div class="row text-primary">
     <span class="label">{labels.content}：</span>
     <div class="stars-wrap">
-      <StarRating count={5} rating={rating.content} showClear={false} onRating={(v) => void set('content', v)} />
+      <HalfStarRating count={5} rating={rating.content} showClear={false} size={starSize} onRating={(v: number) => void set('content', v)} />
     </div>
   </div>
   <div class="row text-primary" data-overall={rating.overall.toFixed(2)}>
     <span class="label">{labels.overall}：</span>
     <div class="stars-wrap">
-      <FractionalStars value={rating.overall} count={5} size="1.35em" />
+      <FractionalStars value={rating.overall} count={5} size={starSize} />
     </div>
   </div>
 </div>
