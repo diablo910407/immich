@@ -58,6 +58,9 @@ export class PersonTable {
   @Column({ type: 'character varying', nullable: true, default: null })
   color!: string | null;
 
+  @Column({ type: 'jsonb', nullable: true, default: null })
+  rate!: any | null;
+
   @UpdateIdColumn({ index: true })
   updateId!: Generated<string>;
 }

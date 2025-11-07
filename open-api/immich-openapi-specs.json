@@ -13444,6 +13444,10 @@
           "name": {
             "description": "Person name.",
             "type": "string"
+          },
+          "rate": {
+            "description": "Person rating data (json).",
+            "type": "object"
           }
         },
         "required": [
@@ -13636,6 +13640,10 @@
           "name": {
             "type": "string"
           },
+          "rate": {
+            "description": "This property was added in v1.200.0",
+            "type": "object"
+          },
           "thumbnailPath": {
             "type": "string"
           },
@@ -13692,6 +13700,10 @@
           "name": {
             "description": "Person name.",
             "type": "string"
+          },
+          "rate": {
+            "description": "Person rating data (json).",
+            "type": "object"
           }
         },
         "type": "object"
@@ -13725,6 +13737,10 @@
           },
           "name": {
             "type": "string"
+          },
+          "rate": {
+            "description": "This property was added in v1.200.0",
+            "type": "object"
           },
           "thumbnailPath": {
             "type": "string"

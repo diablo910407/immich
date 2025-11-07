@@ -6,8 +6,10 @@
   import { shortcut } from '$lib/actions/shortcut';
   import ManagePeopleVisibility from '$lib/components/faces-page/manage-people-visibility.svelte';
   import PeopleCard from '$lib/components/faces-page/people-card.svelte';
+  import PersonRating from '$lib/components/faces-page/person-rating.svelte';
   import PeopleInfiniteScroll from '$lib/components/faces-page/people-infinite-scroll.svelte';
   import SearchPeople from '$lib/components/faces-page/people-search.svelte';
+  import SortDimensionButtons from '$lib/components/photos-page/sort-dimension-buttons.svelte';
   import UserPageLayout from '$lib/components/layouts/user-page-layout.svelte';
   import { ActionQueryParameterValue, AppRoute, QueryParameter, SessionStorageKey } from '$lib/constants';
   import PersonEditBirthDateModal from '$lib/modals/PersonEditBirthDateModal.svelte';
@@ -25,6 +27,9 @@
   import { quintOut } from 'svelte/easing';
   import { fly } from 'svelte/transition';
   import type { PageData } from './$types';
+  import { sortPersonGroupsBy, sortPersonGroupsDefault, type PersonSortDimension } from '$lib/utils/person-group-sort-by';
+  import { personRatingStore } from '$lib/stores/person-rating.store';
+  import { SvelteSet } from 'svelte/reactivity';
 
   interface Props {
     data: PageData;
@@ -44,6 +49,8 @@
   let searchedPeopleLocal: PersonResponseDto[] = $state([]);
   let innerHeight = $state(0);
   let searchPeopleElement = $state<ReturnType<typeof SearchPeople>>();
+  // 排序维度，默认综合，与 Photos 页一致
+  let sortByDimension: PersonSortDimension = $state('overall');
 
   onMount(() => {
     const getSearchedPeople = $page.url.searchParams.get(QueryParameter.SEARCHED_PEOPLE);
@@ -233,6 +240,50 @@
   let visiblePeople = $derived(people.filter((people) => !people.isHidden));
   let countVisiblePeople = $derived(searchName ? searchedPeopleLocal.length : data.people.total - data.people.hidden);
   let showPeople = $derived(searchName ? searchedPeopleLocal : visiblePeople);
+  // 仅在列表数据变化时刷新排序，评分变动不触发
+  let showPeopleSorted = $derived(
+    sortByDimension === 'overall' ? sortPersonGroupsDefault(showPeople) : sortPersonGroupsBy(showPeople, sortByDimension),
+  );
+  // 调试日志：维度与排序人数
+  $effect(() => {
+    console.log('[People] sortByDimension =', sortByDimension, ', sorted count =', showPeopleSorted.length);
+  });
+
+  
+
+  // 将后端返回的评分数据种子到本地 store（避免修改外部库元数据）
+  const seededIds = new SvelteSet<string>();
+  type PersonWithRate = PersonResponseDto & {
+    rate?: {
+      looks?: number;
+      body?: number;
+      content?: number;
+      overall?: number;
+      updatedAt?: string;
+    };
+  };
+  function seedRatingsFromServer(list: PersonResponseDto[]) {
+    for (const person of list) {
+      if (seededIds.has(person.id)) {
+        continue;
+      }
+      const rate = (person as PersonWithRate).rate;
+      if (rate && typeof rate === 'object') {
+        const looks = Number(rate.looks ?? 0);
+        const body = Number(rate.body ?? 0);
+        const content = Number(rate.content ?? 0);
+        personRatingStore.setDimension(person.id, 'looks', looks);
+        personRatingStore.setDimension(person.id, 'body', body);
+        personRatingStore.setDimension(person.id, 'content', content);
+      }
+      seededIds.add(person.id);
+    }
+  }
+
+  // 初始以及无限滚动加载更多时种子评分
+  $effect(() => {
+    seedRatingsFromServer(people);
+  });
 
   const onNameChangeInputFocus = (person: PersonResponseDto) => {
     editingPerson = person;
@@ -334,6 +385,13 @@
             />
           </div>
         </div>
+        <SortDimensionButtons
+          selected={sortByDimension}
+          onChange={(d) => {
+            sortByDimension = d;
+            console.log('[People] 切换排序维度为:', d);
+          }}
+        />
         <Button
           leadingIcon={mdiEyeOutline}
           onclick={() => (selectHidden = !selectHidden)}
@@ -346,7 +404,12 @@
   {/snippet}
 
   {#if countVisiblePeople > 0 && (!searchName || searchedPeopleLocal.length > 0)}
-    <PeopleInfiniteScroll people={showPeople} hasNextPage={!!nextPage && !searchName} {loadNextPage}>
+    <PeopleInfiniteScroll
+      people={showPeopleSorted}
+      hasNextPage={!!nextPage && !searchName}
+      {loadNextPage}
+      gridClass="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7"
+    >
       {#snippet children({ person })}
         <div
           class="p-2 rounded-xl hover:bg-gray-200 border-2 hover:border-immich-primary/50 hover:shadow-sm dark:hover:bg-immich-dark-primary/20 hover:dark:border-immich-dark-primary/25 border-transparent transition-all"
@@ -358,6 +421,10 @@
             onHidePerson={() => handleHidePerson(person)}
             onToggleFavorite={() => handleToggleFavorite(person)}
           />
+
+          <div class="mt-1">
+            <PersonRating {person} />
+          </div>
 
           <input
             type="text"

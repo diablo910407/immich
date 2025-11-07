@@ -255,6 +255,7 @@ export type Person = {
   name: string;
   birthDate: Date | null;
   color: string | null;
+  rate: object | null;
   faceAssetId: string | null;
   isHidden: boolean;
   thumbnailPath: string;

@@ -43,6 +43,7 @@ import { JobItem, JobOf } from 'src/types';
 import { ImmichFileResponse } from 'src/utils/file';
 import { mimeTypes } from 'src/utils/mime-types';
 import { isFacialRecognitionEnabled } from 'src/utils/misc';
+import { persistPersonRateToFile } from 'src/services/person-rate-file.service';
 
 @Injectable()
 export class PersonService extends BaseService {
@@ -187,7 +188,7 @@ export class PersonService extends BaseService {
   async update(auth: AuthDto, id: string, dto: PersonUpdateDto): Promise<PersonResponseDto> {
     await this.requireAccess({ auth, permission: Permission.PersonUpdate, ids: [id] });
 
-    const { name, birthDate, isHidden, featureFaceAssetId: assetId, isFavorite, color } = dto;
+    const { name, birthDate, isHidden, featureFaceAssetId: assetId, isFavorite, color, rate } = dto;
     // TODO: set by faceId directly
     let faceId: string | undefined = undefined;
     if (assetId) {
@@ -211,8 +212,18 @@ export class PersonService extends BaseService {
       birthDate,
       isHidden,
       isFavorite,
+      rate,
       color,
     });
+
+    // 如果评分发生更新，追加写入本地数据文件（NDJSON），避免仅依赖浏览器存储
+    try {
+      if (rate) {
+        persistPersonRateToFile(id, auth?.user?.id, rate as any);
+      }
+    } catch (error) {
+      this.logger.warn(`Persist person rate to local file failed: ${error}`);
+    }
 
     if (assetId) {
       await this.jobRepository.queue({ name: JobName.PersonGenerateThumbnail, data: { id } });

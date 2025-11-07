@@ -57,6 +57,12 @@ export class PersonUpdateDto extends PersonCreateDto {
    */
   @ValidateUUID({ optional: true })
   featureFaceAssetId?: string;
+
+  /**
+   * Person rating data (json).
+   */
+  @Optional({ nullable: true })
+  rate?: any;
 }
 
 export class PeopleUpdateDto {
@@ -117,6 +123,8 @@ export class PersonResponseDto {
   isFavorite?: boolean;
   @PropertyLifecycle({ addedAt: 'v1.126.0' })
   color?: string;
+  @PropertyLifecycle({ addedAt: 'v1.200.0' })
+  rate?: any;
 }
 
 export class PersonWithFacesResponseDto extends PersonResponseDto {
@@ -230,6 +238,7 @@ export function mapPerson(person: Person): PersonResponseDto {
     isFavorite: person.isFavorite,
     color: person.color ?? undefined,
     updatedAt: person.updatedAt,
+    rate: person.rate ?? undefined,
   };
 }
 

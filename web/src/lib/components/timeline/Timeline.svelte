@@ -2,7 +2,6 @@
   import { afterNavigate, beforeNavigate } from '$app/navigation';
   import { page } from '$app/state';
   import { resizeObserver, type OnResizeCallback } from '$lib/actions/resize-observer';
-  import AssetListView from '$lib/components/assets/asset-list-view.svelte';
   import Scrubber from '$lib/components/timeline/Scrubber.svelte';
   import TimelineAssetViewer from '$lib/components/timeline/TimelineAssetViewer.svelte';
   import TimelineKeyboardActions from '$lib/components/timeline/actions/TimelineKeyboardActions.svelte';
@@ -20,13 +19,15 @@
   import { assetViewingStore } from '$lib/stores/asset-viewing.store';
   import { isSelectingAllAssets } from '$lib/stores/assets-store.svelte';
   import { mobileDevice } from '$lib/stores/mobile-device.svelte';
-  import { isAssetViewerRoute, navigate } from '$lib/utils/navigation';
+  import { isAssetViewerRoute } from '$lib/utils/navigation';
   import { getTimes, type ScrubberListener } from '$lib/utils/timeline-util';
   import { type AlbumResponseDto, type PersonResponseDto } from '@immich/sdk';
   import { DateTime } from 'luxon';
   import { onDestroy, onMount, type Snippet } from 'svelte';
   import type { UpdatePayload } from 'vite';
   import TimelineDateGroup from './TimelineDateGroup.svelte';
+  import PersonGroupedListView from '$lib/components/assets/person-grouped-list-view.svelte';
+  import type { PersonSortDimension } from '$lib/utils/person-group-sort-by';
 
   interface Props {
     isSelectionMode?: boolean;
@@ -68,6 +69,8 @@
         asset: TimelineAsset,
       ) => void,
     ) => void;
+    // 列表模式下排序维度
+    sortByDimension?: PersonSortDimension;
   }
 
   let {
@@ -91,6 +94,8 @@
     empty,
     customLayout,
     onThumbnailClick,
+    // 列表排序维度，仅在 viewMode === 'list' 时生效
+    sortByDimension = 'overall',
   }: Props = $props();
 
   timelineManager = new TimelineManager();
@@ -106,6 +111,7 @@
 
   // 视图模式基于传入的isListView属性
   const viewMode = $derived(isListView ? 'list' : 'grid');
+  const listSortDimension = $derived(sortByDimension ?? 'overall');
 
   // 添加调试日志
   $effect(() => {
@@ -115,19 +121,6 @@
     console.log('Timeline: timelineManager.isInitialized:', timelineManager?.isInitialized || false);
   });
 
-  // 处理资产点击事件的函数
-  const _onClick = (
-    timelineManager: TimelineManager,
-    assets: TimelineAsset[],
-    groupTitle: string,
-    asset: TimelineAsset,
-  ) => {
-    if (isSelectionMode || assetInteraction.selectionActive) {
-      void handleSelectAssets(asset);
-      return;
-    }
-    void navigate({ targetRoute: 'current', assetId: asset.id });
-  };
   // The percentage of scroll through the month that is currently intersecting the top boundary of the viewport.
   // Note: There may be multiple months visible within the viewport at any given time.
   let viewportTopMonthScrollPercent = $state(0);
@@ -590,7 +583,7 @@
   {onEscape}
 />
 
-{#if timelineManager.months.length > 0}
+{#if viewMode === 'grid' && timelineManager.months.length > 0}
   <Scrubber
     {timelineManager}
     height={timelineManager.viewportHeight}
@@ -630,12 +623,13 @@
   bind:this={scrollableElement}
   onscroll={() => (handleTimelineScroll(), timelineManager.updateSlidingWindow(), updateIsScrolling())}
 >
-  <section
-    bind:this={timelineElement}
-    id="virtual-timeline"
-    class:invisible
-    style:height={timelineManager.totalViewerHeight + 'px'}
-  >
+  {#if viewMode === 'grid'}
+    <section
+      bind:this={timelineElement}
+      id="virtual-timeline"
+      class:invisible
+      style:height={timelineManager.totalViewerHeight + 'px'}
+    >
     <section
       use:resizeObserver={topSectionResizeObserver}
       class:invisible
@@ -686,59 +680,6 @@
               {customLayout}
               {onThumbnailClick}
             />
-          {:else}
-            <!-- 列表视图 -->
-            <div
-              class="p-4"
-              use:resizeObserver={({ height }) => {
-                // 直接测量列表内容实际高度（内层容器），更新月份高度
-                const newHeight = Math.ceil(height);
-                if (!monthGroup.isHeightActual || monthGroup.height !== newHeight) {
-                  monthGroup.height = newHeight;
-                  monthGroup.isHeightActual = true;
-                }
-              }}
-            >
-              <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
-                {monthGroup.monthGroupTitle}
-              </h3>
-              {#each monthGroup.dayGroups as dayGroup (dayGroup.day)}
-                {@const assets = dayGroup.getAssets()}
-                {#if assets.length > 0}
-                  {@const selectedAssets = new Set(
-                    assets.filter((asset) => assetInteraction.hasSelectedAsset(asset.id)),
-                  )}
-                  {@const selectionCandidates = new Set(
-                    assets.filter((asset) => assetInteraction.hasSelectionCandidate(asset.id)),
-                  )}
-                  <div class="mb-6">
-                    <h4 class="text-md font-medium mb-3 text-gray-700 dark:text-gray-300">
-                      {dayGroup.groupTitle}
-                    </h4>
-                    <AssetListView
-                      {assets}
-                      {selectedAssets}
-                      {selectionCandidates}
-                      disabled={false}
-                      {showArchiveIcon}
-                      on:click={({ detail }) => {
-                        if (typeof onThumbnailClick === 'function') {
-                          onThumbnailClick(detail.asset, timelineManager, dayGroup, _onClick);
-                        } else {
-                          _onClick(timelineManager, assets, dayGroup.groupTitle, detail.asset);
-                        }
-                      }}
-                      on:select={({ detail }) => {
-                        void handleSelectAssets(detail.asset);
-                      }}
-                      on:mouseEvent={({ detail }) => {
-                        handleSelectAssetCandidates(detail.asset);
-                      }}
-                    />
-                  </div>
-                {/if}
-              {/each}
-            </div>
           {/if}
         </div>
       {/if}
@@ -751,7 +692,18 @@
       style:right="0"
       style:transform={`translate3d(0,${timelineManager.topSectionHeight + timelineManager.bodySectionHeight}px,0)`}
     ></div>
-  </section>
+    </section>
+  {:else}
+    <!-- 列表模式：按人物分组展示 -->
+    <PersonGroupedListView
+      {assetInteraction}
+      {isSelectionMode}
+      {singleSelect}
+      {showArchiveIcon}
+      onSelect={onSelect}
+      sortBy={listSortDimension}
+    />
+  {/if}
 </section>
 
 <Portal target="body">

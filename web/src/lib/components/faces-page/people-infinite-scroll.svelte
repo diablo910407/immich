@@ -6,9 +6,10 @@
     hasNextPage?: boolean | undefined;
     loadNextPage: () => void;
     children?: import('svelte').Snippet<[{ person: PersonResponseDto; index: number }]>;
+    gridClass?: string;
   }
 
-  let { people, hasNextPage = undefined, loadNextPage, children }: Props = $props();
+  let { people, hasNextPage = undefined, loadNextPage, children, gridClass = '' }: Props = $props();
 
   let lastPersonContainer: HTMLElement | undefined = $state();
 
@@ -27,7 +28,7 @@
   });
 </script>
 
-<div class="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-7 2xl:grid-cols-10 gap-1">
+<div class={`w-full grid gap-1 ${gridClass || 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-7 2xl:grid-cols-10'}`}>
   {#each people as person, index (person.id)}
     {#if hasNextPage && index === people.length - 1}
       <div bind:this={lastPersonContainer}>

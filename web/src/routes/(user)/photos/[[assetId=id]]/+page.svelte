@@ -22,6 +22,8 @@
   import TagAction from '$lib/components/timeline/actions/TagAction.svelte';
   import AssetSelectControlBar from '$lib/components/timeline/AssetSelectControlBar.svelte';
   import Timeline from '$lib/components/timeline/Timeline.svelte';
+  import SortDimensionButtons from '$lib/components/photos-page/sort-dimension-buttons.svelte';
+  import type { PersonSortDimension } from '$lib/utils/person-group-sort-by';
   import { AssetAction } from '$lib/constants';
   import { TimelineManager } from '$lib/managers/timeline-manager/timeline-manager.svelte';
   import { AssetInteraction } from '$lib/stores/asset-interaction.svelte';
@@ -52,16 +54,19 @@
 
   // 视图切换状态，默认使用列表模式
   let isListView = $state(true);
+  // 列表模式下的排序维度，默认综合
+  let sortByDimension: PersonSortDimension = $state('overall');
 
   const handleViewToggle = (newIsListView: boolean) => {
     isListView = newIsListView;
+    console.log('[Photos] 切换视图为', isListView ? '列表' : '网格');
 
     // 当切换到网格视图时，强制刷新时间线布局，确保缩略图位置与交叉状态正确
     if (!isListView && timelineManager) {
       try {
         timelineManager.refreshLayout();
-      } catch (e) {
-        console.debug('timelineManager.refreshLayout error', e);
+      } catch (error) {
+        console.debug('timelineManager.refreshLayout error', error);
       }
     }
   };
@@ -106,7 +111,18 @@
 
 <UserPageLayout hideNavbar={assetInteraction.selectionActive} showUploadButton scrollbar={false}>
   {#snippet buttons()}
-    <ViewToggleButton {isListView} onToggle={handleViewToggle} />
+    <div class="flex items-center gap-3">
+      {#if isListView}
+        <SortDimensionButtons
+          selected={sortByDimension}
+          onChange={(d) => {
+            sortByDimension = d;
+            console.log('[Photos] 切换排序维度为:', d);
+          }}
+        />
+      {/if}
+      <ViewToggleButton {isListView} onToggle={handleViewToggle} />
+    </div>
   {/snippet}
 
   <Timeline
@@ -118,6 +134,7 @@
     onEscape={handleEscape}
     withStacked
     {isListView}
+    sortByDimension={sortByDimension}
   >
     {#if $preferences.memories.enabled}
       <MemoryLane />
