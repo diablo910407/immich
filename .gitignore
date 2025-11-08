@@ -33,3 +33,6 @@ docker/docker-compose.dev.yml
 docker/docker-compose.yml
 .trae/
 server/resources/local-data/
+docker/.env.smb
+docker/.env.smb.example
+docker/docker-compose.smb.yml
