@@ -36,3 +36,5 @@ server/resources/local-data/
 docker/.env.smb
 docker/.env.smb.example
 docker/docker-compose.smb.yml
+docker/start-dev-smb.bat
+docker/stop-dev-smb.bat
