@@ -1,0 +1,2 @@
+- 开发版（development）： http://immich-dev.local:3000/
+- 使用版（use）： http://immich-use.local:3100/
