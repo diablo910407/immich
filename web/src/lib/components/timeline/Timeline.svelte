@@ -696,6 +696,7 @@
   {:else}
     <!-- 列表模式：按人物分组展示 -->
     <PersonGroupedListView
+      {person}
       {assetInteraction}
       {isSelectionMode}
       {singleSelect}

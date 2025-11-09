@@ -28,6 +28,8 @@
     onSelect?: (asset: TimelineAsset) => void;
     // 列表排序维度，仅在人物分组列表模式下使用
     sortBy?: PersonSortDimension;
+    // 可选：限定只显示某一个人物（用于人物详情页的列表模式）
+    person?: PersonResponseDto;
   }
 
   let {
@@ -37,6 +39,7 @@
     showArchiveIcon = false,
     onSelect = () => {},
     sortBy = 'overall',
+    person,
   }: Props = $props();
 
   type PersonGroup = {
@@ -74,14 +77,23 @@
 
   const initGroups = async () => {
     try {
-      // 仅加载未隐藏人物，保证照片界面不显示被隐藏人物
-      const { people } = await getAllPeople({ withHidden: false });
-      const sorted = sortBy === 'overall' ? sortPersonGroupsDefault(people) : sortPersonGroupsBy(people, sortBy);
-      groups = sorted.map((p) => ({ person: p, assets: [], page: 1, hasNext: true, loading: false, loadedOnce: false }));
-      console.log('[PersonList] 初始化人物组数量(不含隐藏):', groups.length, '排序维度:', sortBy);
-      // 初始化评分映射，避免首次渲染为空
-      for (const p of sorted) {
-        ratingMap[p.id] = personRatingStore.ensure(p.id);
+      // 如果传入了特定人物，则仅初始化该人物的分组
+      if (person) {
+        groups = [
+          { person, assets: [], page: 1, hasNext: true, loading: false, loadedOnce: false },
+        ];
+        ratingMap[person.id] = personRatingStore.ensure(person.id);
+        console.log('[PersonList] 以人物过滤模式初始化:', person.name);
+      } else {
+        // 仅加载未隐藏人物，保证照片界面不显示被隐藏人物
+        const { people } = await getAllPeople({ withHidden: false });
+        const sorted = sortBy === 'overall' ? sortPersonGroupsDefault(people) : sortPersonGroupsBy(people, sortBy);
+        groups = sorted.map((p) => ({ person: p, assets: [], page: 1, hasNext: true, loading: false, loadedOnce: false }));
+        console.log('[PersonList] 初始化人物组数量(不含隐藏):', groups.length, '排序维度:', sortBy);
+        // 初始化评分映射，避免首次渲染为空
+        for (const p of sorted) {
+          ratingMap[p.id] = personRatingStore.ensure(p.id);
+        }
       }
     } catch (error) {
       handleError(error, '加载人物列表失败');
@@ -154,6 +166,10 @@
     if (isInitializing || groups.length === 0) {
       return;
     }
+    // 若为人物过滤模式（只有一个分组），无需重排
+    if (person) {
+      return;
+    }
     const people = groups.map((g) => g.person);
     const sorted = sortBy === 'overall' ? sortPersonGroupsDefault(people) : sortPersonGroupsBy(people, sortBy);
     // 使用排序后的顺序重排 groups，但保留其 assets、分页等状态
@@ -170,7 +186,7 @@
         console.debug('[PersonList] 评分更新:', id, state[id]);
       }
       // 分数更新后也根据当前维度重排
-      if (!isInitializing && groups.length > 0) {
+      if (!isInitializing && groups.length > 0 && !person) {
         const people = groups.map((g) => g.person);
         const sorted = sortBy === 'overall' ? sortPersonGroupsDefault(people) : sortPersonGroupsBy(people, sortBy);
         const orderMap = new Map(sorted.map((p, idx) => [p.id, idx]));
