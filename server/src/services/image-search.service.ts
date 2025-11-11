@@ -214,8 +214,13 @@ export class ImageSearchService extends BaseService {
     const minDistance = validDistances.length ? Math.min(...validDistances) : undefined;
     const maxDistance = validDistances.length ? Math.max(...validDistances) : undefined;
     if (minDistance !== undefined && maxDistance !== undefined) {
+      const absMaxPct = this.toSimilarityPercent(minDistance);
+      const flatnessRatio = (maxDistance - minDistance) / Math.max(minDistance, 1e-12);
+      const isNoSimilar = minDistance >= 0.32 && flatnessRatio <= 0.8;
       this.logger.log(
-        `[CLIP] 距离范围: min=${minDistance.toFixed(6)}, max=${maxDistance.toFixed(6)}（按本次结果归一化显示相似度）`,
+        `[CLIP] 距离范围: min=${minDistance.toFixed(6)}, max=${maxDistance.toFixed(6)}（归一化显示）；绝对上限≈${
+          typeof absMaxPct === 'number' ? Math.round(absMaxPct) : '-'
+        }%，平坦度=${flatnessRatio.toFixed(3)}${isNoSimilar ? '；识别为无相似场景，顶端≤40%' : ''}`,
       );
     } else {
       this.logger.warn('[CLIP] 距离范围不可用，退回固定公式映射');
@@ -304,7 +309,21 @@ export class ImageSearchService extends BaseService {
     // gamma > 1 可显著提升中高相似的分数，贴近“视觉相似”直觉
     const gamma = 2.0;
     const s = 1 - Math.pow(norm, gamma);
-    const pct = Math.round(100 * s);
+    let pct = Math.round(100 * s);
+    // 绝对相似上限：不让归一化将“最小但仍很大”的距离映射到 100%
+    // 通过原始稳健公式对当前 distance 做上限，确保无相似内容时最高分不超过其绝对相似度
+    const absPct = this.toSimilarityPercent(distance);
+    if (typeof absPct === 'number' && isFinite(absPct)) {
+      pct = Math.min(pct, absPct);
+    }
+    // 无相似场景压制：当本次结果的最小距离足够大且分布较“平”时，限制顶端得分
+    // 判定：minDistance >= 0.32 且 (max-min)/min <= 0.8（经验值，避免误伤有相似场景）
+    const flatnessRatio = range / Math.max(min, 1e-12);
+    const isNoSimilar = min >= 0.32 && flatnessRatio <= 0.8;
+    if (isNoSimilar) {
+      const NO_SIMILAR_TOP_CAP = 40; // 无相似场景下的可视化上限（按你的要求调整为40）
+      pct = Math.min(pct, NO_SIMILAR_TOP_CAP);
+    }
     return Math.max(0, Math.min(100, pct));
   }
 
