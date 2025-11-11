@@ -209,11 +209,26 @@ export class ImageSearchService extends BaseService {
       );
     }
 
+    // 计算本次结果的距离范围，做查询自适应归一化：最佳匹配 -> 100%，最差匹配 -> 0%
+    const validDistances = typedItems.map((i) => i.distance).filter((d): d is number => typeof d === 'number');
+    const minDistance = validDistances.length ? Math.min(...validDistances) : undefined;
+    const maxDistance = validDistances.length ? Math.max(...validDistances) : undefined;
+    if (minDistance !== undefined && maxDistance !== undefined) {
+      this.logger.log(
+        `[CLIP] 距离范围: min=${minDistance.toFixed(6)}, max=${maxDistance.toFixed(6)}（按本次结果归一化显示相似度）`,
+      );
+    } else {
+      this.logger.warn('[CLIP] 距离范围不可用，退回固定公式映射');
+    }
+
     // 将距离映射为相似度百分比（0-100），用于前端展示。距离越小，相似度越高。
     const assets: ImageSearchAssetDto[] = typedItems.map((a) => ({
       id: a.id,
       fileName: a.originalFileName || undefined,
-      similarity: this.toSimilarityPercent(a.distance),
+      similarity:
+        minDistance !== undefined && maxDistance !== undefined
+          ? this.toSimilarityPercentNormalized(a.distance, minDistance, maxDistance)
+          : this.toSimilarityPercent(a.distance),
     }));
 
     // 内容相似搜索不涉及人名，评分字段留空（前端以 '--' 展示）
@@ -262,6 +277,34 @@ export class ImageSearchService extends BaseService {
       return undefined;
     }
     const pct = Math.round(100 * (1 / (1 + distance)));
+    return Math.max(0, Math.min(100, pct));
+  }
+
+  /**
+   * 查询自适应的归一化映射：按本次结果的最小/最大距离归一化到 [0,1]，
+   * 然后使用幂函数拉伸到 [100, 0]，以强调高相似区间的可视化（更贴近视觉感知）。
+   * - 当 min==max（所有距离一致）时，返回 100。
+   * - 当 distance 缺失或非法时，返回 undefined。
+   * 该方法只影响“相似内容”模式的人为展示，不影响排序逻辑。
+   */
+  private toSimilarityPercentNormalized(distance?: number, min?: number, max?: number): number | undefined {
+    if (typeof distance !== 'number' || !isFinite(distance) || distance < 0) {
+      return undefined;
+    }
+    if (typeof min !== 'number' || typeof max !== 'number' || !isFinite(min) || !isFinite(max) || min < 0 || max < 0) {
+      return this.toSimilarityPercent(distance);
+    }
+    const range = max - min;
+    if (range <= 1e-12) {
+      return 100; // 所有距离近乎一致，视为满分（展示层面）
+    }
+    // 归一化到 [0,1]
+    const norm = Math.max(0, Math.min(1, (distance - min) / range));
+    // 使用幂函数拉伸：similarity = 100 * (1 - norm^gamma)
+    // gamma > 1 可显著提升中高相似的分数，贴近“视觉相似”直觉
+    const gamma = 2.0;
+    const s = 1 - Math.pow(norm, gamma);
+    const pct = Math.round(100 * s);
     return Math.max(0, Math.min(100, pct));
   }
 
