@@ -16,6 +16,8 @@
   // 上传文件与搜索模式状态
   let selectedFile: File | null = $state(null);
   let searchMode: 'face' | 'similar' = $state('similar');
+  // 保存“上次搜索的模式”，用于冻结结果列表的展示模式，避免仅点击单选就影响已显示结果
+  let lastSearchMode: 'face' | 'similar' | null = $state(null);
   let isSearching = $state(false);
   let previewUrl: string | null = $state(null);
   let dropZoneEl: HTMLDivElement; // 拖拽区域元素引用，用于判定事件目标
@@ -65,6 +67,12 @@
   // 引导日志，方便调试
   onMount(() => {
     console.log('[ImageSearch] 页面挂载完成');
+  });
+
+  // 仅作为预设：单选按钮更改时记录日志，不触发搜索、不影响当前结果列表
+  $effect(() => {
+    // 引用 searchMode 作为依赖，使该日志在用户更改单选时触发
+    console.log('[ImageSearch] 搜索类型预设更改:', searchMode, '（不会刷新已显示的结果列表）');
   });
 
   // 选择文件：打开文件选择框
@@ -208,6 +216,9 @@
       toastManager.warning('请先选择或上传图片');
       return;
     }
+    // 在发起搜索时固定当前结果展示的模式
+    lastSearchMode = searchMode;
+    console.log('[ImageSearch] 固定当前结果展示模式为:', lastSearchMode);
     isSearching = true;
     results = [];
     try {
@@ -333,7 +344,8 @@
               {#if r.assets && r.assets.length > 0}
                 {@const listItems = r.assets.map((a) => ({ asset: toMinimalTimelineAsset(a), similarity: a.similarity }))}
                 <div class="mt-3">
-                  <ImageSearchList mode={searchMode} items={listItems} on:itemClick={({ detail }) => void openAsset(detail.assetId)} />
+                  <!-- 列表展示使用“上次搜索模式”，避免仅点击单选按钮时刷新或改变已显示的结果样式 -->
+                  <ImageSearchList mode={lastSearchMode ?? 'similar'} items={listItems} on:itemClick={({ detail }) => void openAsset(detail.assetId)} />
                 </div>
               {/if}
             </div>
