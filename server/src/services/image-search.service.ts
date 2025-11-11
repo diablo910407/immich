@@ -81,15 +81,15 @@ export class ImageSearchService extends BaseService {
     userIds: string[],
     maxResults: number,
   ): Promise<ImageSearchResponseDto> {
-    // 进行人脸检测
+    // 进行人脸检测（带阈值回退）
     this.logger.log(`开始人脸检测: ${imagePath}`);
     this.logger.log(
       `[Face] 配置: model=${machineLearning.facialRecognition.modelName}, minScore=${machineLearning.facialRecognition.minScore}, maxDistance=${machineLearning.facialRecognition.maxDistance}, userIds=${userIds.length}, maxResults=${maxResults}`,
     );
-    const { minScore, modelName, maxDistance } = machineLearning.facialRecognition;
-    const detection = await this.machineLearningRepository.detectFaces(imagePath, { modelName, minScore });
+    const { modelName, minScore, maxDistance } = machineLearning.facialRecognition;
+    const detection = await this.detectFacesWithFallback(imagePath, modelName, minScore);
     this.logger.log(
-      `检测到人脸数量: ${detection.faces.length}，尺寸=${detection.imageWidth}x${detection.imageHeight}`,
+      `检测到人脸数量: ${detection.faces.length}（使用minScore=${detection.usedMinScore}），尺寸=${detection.imageWidth}x${detection.imageHeight}`,
     );
 
     // 打印前最多 5 个检测结果的 bbox/score 与嵌入信息
@@ -109,13 +109,11 @@ export class ImageSearchService extends BaseService {
       this.logger.log(
         `[人脸] 开始相似检索: embed=${this.getEmbeddingInfo(face.embedding)}, maxDistance=${maxDistance}, numResults=${maxResults}, userIds=${userIds.length}`,
       );
-      const items: FaceSearchResult[] = await this.searchRepository.searchFaces({
+      const items: FaceSearchResult[] = await this.searchFacesWithFallback({
         userIds,
         embedding: face.embedding,
         numResults: maxResults,
-        maxDistance,
-        hasPerson: undefined,
-        minBirthDate: undefined,
+        baseMaxDistance: maxDistance,
       });
       this.logger.log(`[人脸] 相似检索返回数量: ${items.length}`);
       if (items.length > 0) {
@@ -250,7 +248,73 @@ export class ImageSearchService extends BaseService {
   }
 
   /**
-   * 额外输出嵌入向量的统计信息：min/max/mean/std，便于诊断是否为全零/异常值。
+   * 人脸检测：按 minScore 逐级回退，提升弱姿态（如侧脸、偏光照）下的检测召回。
+   * 回退序列：config.minScore -> 0.5 -> 0.35。
+   * 仅用于临时上传的以图搜图，不影响系统的资产检测与聚类任务。
+   */
+  private async detectFacesWithFallback(
+    imagePath: string,
+    modelName: string,
+    minScore: number,
+  ): Promise<{ faces: { boundingBox: any; embedding: string; score: number }[]; imageHeight: number; imageWidth: number; usedMinScore: number }> {
+    const candidates = [minScore, 0.5, 0.35];
+    for (let i = 0; i < candidates.length; i++) {
+      const score = candidates[i];
+      const resp = await this.machineLearningRepository.detectFaces(imagePath, { modelName, minScore: score });
+      this.logger.log(`[Face] 检测尝试#${i + 1}: minScore=${score} -> faces=${resp.faces.length}`);
+      if (resp.faces.length > 0) {
+        return { ...resp, usedMinScore: score } as any;
+      }
+    }
+    // 若所有阈值都无检测结果，返回最后一次响应，并记录使用的阈值
+    const finalResp = await this.machineLearningRepository.detectFaces(imagePath, { modelName, minScore: candidates[candidates.length - 1] });
+    this.logger.warn(`[Face] 所有阈值均未检测到人脸，返回最后一次结果 faces=${finalResp.faces.length}`);
+    return { ...finalResp, usedMinScore: candidates[candidates.length - 1] } as any;
+  }
+
+  /**
+   * 人脸相似搜索：若在默认距离阈值下无结果，尝试小幅放宽（例如 0.6）。
+   * 目的：对齐 Immich 聚类的召回体验，避免侧脸/弱特征图像完全查不到。
+   */
+  private async searchFacesWithFallback(args: {
+    userIds: string[];
+    embedding: string;
+    numResults: number;
+    baseMaxDistance: number;
+  }): Promise<FaceSearchResult[]> {
+    const { userIds, embedding, numResults, baseMaxDistance } = args;
+    const distances = [baseMaxDistance, Math.max(baseMaxDistance, 0.6)];
+    for (let i = 0; i < distances.length; i++) {
+      const md = distances[i];
+      const items = await this.searchRepository.searchFaces({
+        userIds,
+        embedding,
+        numResults,
+        maxDistance: md,
+        hasPerson: undefined,
+        minBirthDate: undefined,
+      });
+      this.logger.log(`[人脸] 检索尝试#${i + 1}: maxDistance=${md} -> items=${items.length}`);
+      if (items.length > 0) {
+        return items;
+      }
+    }
+    // 均无结果时返回最后一次尝试结果（通常为空），便于前端显示为空状态
+    const lastMd = distances[distances.length - 1];
+    const lastItems = await this.searchRepository.searchFaces({
+      userIds,
+      embedding,
+      numResults,
+      maxDistance: lastMd,
+      hasPerson: undefined,
+      minBirthDate: undefined,
+    });
+    this.logger.warn(`[人脸] 所有距离阈值均无匹配，返回最后一次尝试结果=${lastItems.length}`);
+    return lastItems;
+  }
+
+  /**
+   * （仅日志使用）计算嵌入向量的基础统计信息，帮助排查异常值。
    */
   private getEmbeddingStats(embedding: string): string {
     try {
@@ -258,19 +322,21 @@ export class ImageSearchService extends BaseService {
       if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
         const arr = JSON.parse(trimmed);
         if (Array.isArray(arr) && arr.length > 0) {
-          const nums = arr.map((v: any) => Number(v) || 0);
-          const n = nums.length;
-          const mean = nums.reduce((a, b) => a + b, 0) / n;
-          const min = Math.min(...nums);
-          const max = Math.max(...nums);
-          const variance = nums.reduce((a, b) => a + (b - mean) * (b - mean), 0) / n;
-          const std = Math.sqrt(variance);
-          return `min=${min.toFixed(4)}, max=${max.toFixed(4)}, mean=${mean.toFixed(4)}, std=${std.toFixed(4)}`;
+          let sum = 0;
+          let min = Number.POSITIVE_INFINITY;
+          let max = Number.NEGATIVE_INFINITY;
+          for (const v of arr) {
+            const n = Number(v);
+            sum += n;
+            if (n < min) min = n;
+            if (n > max) max = n;
+          }
+          const mean = sum / arr.length;
+          return `dim=${arr.length}, min=${min.toFixed(4)}, max=${max.toFixed(4)}, mean=${mean.toFixed(4)}`;
         }
       }
-    } catch {
-      // 忽略解析错误
-    }
-    return 'stats=unavailable';
+    } catch {}
+    return 'stats=n/a';
   }
+
 }
