@@ -9,16 +9,35 @@ export type PersonRatePayload = {
   updatedAt?: string;
 };
 
-function resolveDataDir() {
+// 解析仓库根目录（兼容 dev 容器中 /usr/src/app 以及直接在 server/ 下运行两种情况）
+function resolveRepoRoot() {
   const cwd = process.cwd();
-  // 优先使用仓库根目录下的 server/resources/local-data（适用于开发绑定挂载）
-  const candidateA = path.join(cwd, 'server', 'resources', 'local-data');
-  const serverDirExists = fs.existsSync(path.join(cwd, 'server'));
-  if (serverDirExists) {
-    return candidateA;
+  const isRepoRoot = fs.existsSync(path.join(cwd, 'server')) && fs.existsSync(path.join(cwd, 'web'));
+  if (isRepoRoot) {
+    return cwd;
   }
-  // 回退：使用当前工作目录下的 resources/local-data（适用于生产打包到 dist 下运行）
-  return path.join(cwd, 'resources', 'local-data');
+  const parent = path.resolve(cwd, '..');
+  const parentLooksLikeRoot = fs.existsSync(path.join(parent, 'server')) && fs.existsSync(path.join(parent, 'web'));
+  return parentLooksLikeRoot ? parent : cwd;
+}
+
+function resolveDataDir() {
+  // 严格使用 docker/.env 中的 DB_DATA_LOCATION；若未配置，则使用新路径的默认值（data/postgres）
+  const repoRoot = resolveRepoRoot();
+  // 以 docker 目录为基准进行相对路径解析，保持与 docker-compose 的语义一致
+  const dockerRoot = fs.existsSync(path.join(repoRoot, 'docker')) ? path.join(repoRoot, 'docker') : repoRoot;
+  const dbDataLocation = process.env.DB_DATA_LOCATION?.trim();
+  const base = dbDataLocation && dbDataLocation.length > 0 ? dbDataLocation : './data/postgres';
+  const target = path.isAbsolute(base) ? base : path.join(dockerRoot, base);
+  // eslint-disable-next-line no-console
+  console.debug('[person-rate-file] 数据目录解析:', {
+    target,
+    base,
+    repoRoot,
+    dockerRoot,
+    source: dbDataLocation ? 'DB_DATA_LOCATION' : 'default',
+  });
+  return target;
 }
 
 const DATA_DIR = resolveDataDir();
