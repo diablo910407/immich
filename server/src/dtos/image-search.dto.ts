@@ -34,6 +34,11 @@ export class ImageSearchAssetDto {
   @IsOptional()
   @ApiProperty({ required: false })
   fileName?: string;
+
+  // 相似内容搜索的相似度百分比（0-100），人脸模式不返回
+  @IsOptional()
+  @ApiProperty({ required: false, description: '相似度百分比（0-100），仅相似内容模式返回' })
+  similarity?: number;
 }
 
 // 以图搜图 - 评分信息（可选）

@@ -9,8 +9,8 @@
   import { goto } from '$app/navigation';
   import { AppRoute } from '$lib/constants';
   // 列表模式组件与类型
-  import AssetListView from '$lib/components/assets/asset-list-view.svelte';
   import type { TimelineAsset } from '$lib/managers/timeline-manager/types';
+  import ImageSearchList from './image-search-list.svelte';
   import { AssetVisibility } from '@immich/sdk';
 
   // 上传文件与搜索模式状态
@@ -22,7 +22,7 @@
 
   // 结果占位数据结构，后续后端接入后替换
   type SimilarityScores = { overall?: number; face?: number; color?: number; content?: number };
-  type SearchResult = { personName?: string; scores?: SimilarityScores; assets?: { id: string; fileName?: string }[] };
+  type SearchResult = { personName?: string; scores?: SimilarityScores; assets?: { id: string; fileName?: string; similarity?: number }[] };
   let results: SearchResult[] = $state([]);
 
   // 将搜索结果资产转换为最小可用的 TimelineAsset，用于列表模式显示
@@ -331,17 +331,9 @@
                 <div class="text-base font-medium mb-2">{r.personName}</div>
               {/if}
               {#if r.assets && r.assets.length > 0}
-                {@const listAssets = r.assets.map((a) => toMinimalTimelineAsset(a))}
+                {@const listItems = r.assets.map((a) => ({ asset: toMinimalTimelineAsset(a), similarity: a.similarity }))}
                 <div class="mt-3">
-                  <AssetListView
-                    assets={listAssets}
-                    selectedAssets={new Set()}
-                    selectionCandidates={new Set()}
-                    disabled={false}
-                    showArchiveIcon={false}
-                    on:click={({ detail }) => void openAsset(detail.asset.id)}
-                    on:select={() => { /* 以图搜图页面暂不启用多选 */ }}
-                  />
+                  <ImageSearchList mode={searchMode} items={listItems} on:itemClick={({ detail }) => void openAsset(detail.assetId)} />
                 </div>
               {/if}
             </div>

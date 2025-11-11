@@ -209,7 +209,12 @@ export class ImageSearchService extends BaseService {
       );
     }
 
-    const assets: ImageSearchAssetDto[] = typedItems.map((a) => ({ id: a.id, fileName: a.originalFileName || undefined }));
+    // 将距离映射为相似度百分比（0-100），用于前端展示。距离越小，相似度越高。
+    const assets: ImageSearchAssetDto[] = typedItems.map((a) => ({
+      id: a.id,
+      fileName: a.originalFileName || undefined,
+      similarity: this.toSimilarityPercent(a.distance),
+    }));
 
     // 内容相似搜索不涉及人名，评分字段留空（前端以 '--' 展示）
     if (assets.length === 0) {
@@ -245,6 +250,19 @@ export class ImageSearchService extends BaseService {
       // 忽略解析错误，降级输出字符串长度
     }
     return `len=${embedding?.length ?? 0}`;
+  }
+
+  /**
+   * 将向量距离转换为直观的相似度百分比（0-100）。
+   * 采用稳健映射：similarity = 100 * (1 / (1 + distance))，保证距离为 0 时为 100%，
+   * 距离增大时相似度单调下降（例如距离=1 -> 50%，距离=2 -> 33%）。
+   */
+  private toSimilarityPercent(distance?: number): number | undefined {
+    if (typeof distance !== 'number' || !isFinite(distance) || distance < 0) {
+      return undefined;
+    }
+    const pct = Math.round(100 * (1 / (1 + distance)));
+    return Math.max(0, Math.min(100, pct));
   }
 
   /**

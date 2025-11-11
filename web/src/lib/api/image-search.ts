@@ -2,7 +2,7 @@
 // 注意：后端接口路径为 '/api/image-search'，表单需包含 file(File) 与 mode('face'|'similar')
 
 export type ImageSearchRequest = FormData;
-export type ImageSearchAsset = { id: string; fileName?: string };
+export type ImageSearchAsset = { id: string; fileName?: string; similarity?: number };
 export type ImageSearchScores = { overall?: number; face?: number; color?: number; content?: number };
 export type ImageSearchItem = { personName?: string; scores?: ImageSearchScores; assets: ImageSearchAsset[] };
 export type ImageSearchResponse = { results: ImageSearchItem[] };

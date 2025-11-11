@@ -127,10 +127,11 @@ Read more about translations [here](https://docs.immich.app/developer/translatio
 
 - Backend API: `POST /api/image-search`
   - Form fields: `file` (binary image), `mode` (`face` | `similar`), optional `maxResults` (integer)
-  - Response: `{ results: [{ personName?: string, scores?: { overall?: number, face?: number, color?: number, content?: number }, assets: [{ id: string, fileName?: string }] }] }`
+  - Response: `{ results: [{ personName?: string, scores?: { overall?: number, face?: number, color?: number, content?: number }, assets: [{ id: string, fileName?: string, similarity?: number }] }] }`
 - Frontend page: `web/src/routes/(user)/image-search/+page.svelte`
   - Supports file picker, drag-and-drop, and clipboard paste upload
   - Displays returned assets with optional scores
+  - Similar mode shows a left-side "相似度" percentage for each item and removes multi-select checkboxes; face mode also removes checkboxes but does not show similarity
 
 <a href="https://star-history.com/#immich-app/immich&Date">
  <picture>
