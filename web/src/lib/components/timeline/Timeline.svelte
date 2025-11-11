@@ -695,8 +695,9 @@
     </section>
   {:else}
     <!-- 列表模式：按人物分组展示 -->
+    <!-- 修复类型绑定：PersonGroupedListView 的 person 为可选且不接受 null，这里将 null 归一为 undefined 以满足类型要求 -->
     <PersonGroupedListView
-      {person}
+      person={person ?? undefined}
       {assetInteraction}
       {isSelectionMode}
       {singleSelect}

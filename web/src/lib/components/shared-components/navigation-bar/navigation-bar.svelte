@@ -18,7 +18,7 @@
   import { sidebarStore } from '$lib/stores/sidebar.svelte';
   import { user } from '$lib/stores/user.store';
   import { Button, IconButton } from '@immich/ui';
-  import { mdiBellBadge, mdiBellOutline, mdiMagnify, mdiMenu, mdiTrayArrowUp } from '@mdi/js';
+  import { mdiBellBadge, mdiBellOutline, mdiMagnify, mdiMenu, mdiTrayArrowUp, mdiCameraIris } from '@mdi/js';
   import { onMount } from 'svelte';
   import { t } from 'svelte-i18n';
   import ThemeButton from '../theme-button.svelte';
@@ -100,6 +100,21 @@
             id="search-button"
             class="sm:hidden"
             aria-label={$t('go_to_search')}
+          />
+
+          <!-- 以图搜图按钮：紧邻搜索输入框右侧，使用相机图标，跳转到新页面。
+               说明：为尽量减少对原有代码的影响，仅在导航条增加一个按钮；
+               链接使用固定路径 /image-search，后端与 SDK 未改动。 -->
+          <IconButton
+            color="secondary"
+            shape="round"
+            variant="ghost"
+            size="medium"
+            icon={mdiCameraIris}
+            href="/image-search"
+            id="image-search-button"
+            class="hidden sm:inline-flex"
+            aria-label="以图搜图"
           />
         {/if}
 

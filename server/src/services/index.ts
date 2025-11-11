@@ -42,6 +42,7 @@ import { UserAdminService } from 'src/services/user-admin.service';
 import { UserService } from 'src/services/user.service';
 import { VersionService } from 'src/services/version.service';
 import { ViewService } from 'src/services/view.service';
+import { ImageSearchService } from 'src/services/image-search.service';
 
 export const services = [
   ApiKeyService,
@@ -70,6 +71,7 @@ export const services = [
   PartnerService,
   PersonService,
   SearchService,
+  ImageSearchService,
   ServerService,
   SessionService,
   SharedLinkService,

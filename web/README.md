@@ -42,3 +42,19 @@ When developing locally, you will run a SvelteKit Node.js server. When this proj
   - 页面：`src/routes/(user)/people/+page.svelte`
   - 下拉组件：`src/lib/components/photos-page/sort-dimension-buttons.svelte`
   - 排序工具：`src/lib/utils/person-group-sort-by.ts`
+
+## 以图搜图（前端占位）
+
+新增一个“以图搜图”入口与页面，保持与 Immich 风格统一，且不影响现有代码：
+
+- 导航按钮：在顶部导航条的搜索输入右侧增加相机图标按钮，点击跳转 `/image-search`。
+  - 相关文件：`src/lib/components/shared-components/navigation-bar/navigation-bar.svelte`
+- 页面路由：`src/routes/(user)/image-search/+page.svelte`
+  - 上传方式：支持文件选择对话框、拖拽到上传框，以及剪贴板图片（Ctrl+V）。
+  - 搜索类型：单选“人脸搜索 / 相似搜索”。
+  - 搜索按钮：调用前端预留接口并显示占位提示，结果区以列表模式占位显示。
+- 接口预留：`src/lib/api/image-search.ts`
+  - 方法：`searchByImage(formData)`，当前返回随机 `queryId`；后续接入后端时替换为真实请求。
+  - 注意：外部库为只读，不修改其元数据；以图搜图的实现将使用独立数据结构或索引文件进行关联。
+
+开发预览：本地 Web 开发服务端口 `http://localhost:3000/`（仅前端预览）。
