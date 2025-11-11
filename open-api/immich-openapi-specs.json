@@ -3623,6 +3623,69 @@
         "description": "This endpoint requires the `face.update` permission."
       }
     },
+    "/image-search": {
+      "post": {
+        "operationId": "searchImage",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "file": {
+                    "format": "binary",
+                    "type": "string"
+                  },
+                  "libraryId": {
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "maxResults": {
+                    "default": 20,
+                    "type": "integer"
+                  },
+                  "mode": {
+                    "enum": [
+                      "face",
+                      "similar"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageSearchResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "tags": [
+          "Image Search"
+        ]
+      }
+    },
     "/jobs": {
       "get": {
         "operationId": "getAllJobsStatus",
@@ -12232,6 +12295,71 @@
           "webp"
         ],
         "type": "string"
+      },
+      "ImageSearchAssetDto": {
+        "properties": {
+          "fileName": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "ImageSearchResponseDto": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/ImageSearchResultDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "results"
+        ],
+        "type": "object"
+      },
+      "ImageSearchResultDto": {
+        "properties": {
+          "assets": {
+            "items": {
+              "$ref": "#/components/schemas/ImageSearchAssetDto"
+            },
+            "type": "array"
+          },
+          "personName": {
+            "type": "string"
+          },
+          "scores": {
+            "$ref": "#/components/schemas/ImageSearchScoresDto"
+          }
+        },
+        "required": [
+          "assets"
+        ],
+        "type": "object"
+      },
+      "ImageSearchScoresDto": {
+        "properties": {
+          "color": {
+            "type": "number"
+          },
+          "content": {
+            "type": "number"
+          },
+          "face": {
+            "type": "number"
+          },
+          "overall": {
+            "type": "number"
+          }
+        },
+        "type": "object"
       },
       "JobCommand": {
         "enum": [

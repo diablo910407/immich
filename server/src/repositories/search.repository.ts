@@ -308,6 +308,42 @@ export class SearchRepository {
     });
   }
 
+  /**
+   * 调试版本：在相似内容检索中同时返回按向量距离排序的 distance 字段，便于日志打印与问题定位。
+   * 保持与 searchSmart 相同的排序与分页逻辑。
+   */
+  @GenerateSql({
+    params: [
+      { page: 1, size: 200 },
+      {
+        takenAfter: DummyValue.DATE,
+        embedding: DummyValue.VECTOR,
+        lensModel: DummyValue.STRING,
+        withStacked: true,
+        isFavorite: true,
+        userIds: [DummyValue.UUID],
+      },
+    ],
+  })
+  searchSmartWithDistance(pagination: SearchPaginationOptions, options: SmartSearchOptions) {
+    if (!isValidInteger(pagination.size, { min: 1, max: 1000 })) {
+      throw new Error(`Invalid value for 'size': ${pagination.size}`);
+    }
+
+    return this.db.transaction().execute(async (trx) => {
+      await sql`set local vchordrq.probes = ${sql.lit(probes[VectorIndex.Clip])}`.execute(trx);
+      const items = await searchAssetBuilder(trx, options)
+        .selectAll('asset')
+        .select(sql<number>`smart_search.embedding <=> ${options.embedding}`.as('distance'))
+        .innerJoin('smart_search', 'asset.id', 'smart_search.assetId')
+        .orderBy(sql`smart_search.embedding <=> ${options.embedding}`)
+        .limit(pagination.size + 1)
+        .offset((pagination.page - 1) * pagination.size)
+        .execute();
+      return paginationHelper(items as any, pagination.size);
+    });
+  }
+
   @GenerateSql({
     params: [DummyValue.UUID],
   })

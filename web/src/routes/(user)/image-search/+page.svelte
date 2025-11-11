@@ -5,7 +5,7 @@
   import EmptyPlaceholder from '$lib/components/shared-components/empty-placeholder.svelte';
   import { Button, LoadingSpinner, Text, toastManager } from '@immich/ui';
   import { onMount } from 'svelte';
-  import { searchByImage } from '$lib/api/image-search';
+  import { searchByImage, type ImageSearchResponse } from '$lib/api/image-search';
 
   // 上传文件与搜索模式状态
   let selectedFile: File | null = $state(null);
@@ -169,14 +169,13 @@
     results = [];
     try {
       const form = new FormData();
-      form.append('image', selectedFile);
+      // 后端期望字段名为 'file'
+      form.append('file', selectedFile);
       form.append('mode', searchMode);
       console.log('[ImageSearch] 发起搜索: mode=', searchMode, ', file=', selectedFile.name);
-      // 预留接口：后端接入后返回真实结果
-      const { queryId } = await searchByImage(form);
-      console.log('[ImageSearch] 接口已预留，queryId =', queryId);
-      // 占位：此处等待后端返回的相似结果并渲染
-      toastManager.info(`已提交查询（${queryId}），等待后端实现返回结果`);
+      const resp: ImageSearchResponse = await searchByImage(form);
+      console.log('[ImageSearch] 搜索成功，返回结果数量:', resp.results?.length ?? 0);
+      results = resp.results ?? [];
     } catch (error) {
       console.error('[ImageSearch] 搜索失败', error);
       toastManager.danger('搜索失败，请稍后重试');

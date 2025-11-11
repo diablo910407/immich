@@ -192,6 +192,11 @@ export class MachineLearningRepository {
   }
 
   async detectFaces(imagePath: string, { modelName, minScore }: FaceDetectionOptions) {
+    // 关键日志：记录调用参数
+    this.logger.log(
+      `[ML] detectFaces 调用: path=${imagePath}, model=${modelName}, minScore=${minScore}`,
+    );
+    const started = Date.now();
     const request = {
       [ModelTask.FACIAL_RECOGNITION]: {
         [ModelType.DETECTION]: { modelName, options: { minScore } },
@@ -199,17 +204,42 @@ export class MachineLearningRepository {
       },
     };
     const response = await this.predict<FacialRecognitionResponse>({ imagePath }, request);
+    const elapsed = Date.now() - started;
+    const faces = response[ModelTask.FACIAL_RECOGNITION] || [];
+    this.logger.log(
+      `[ML] detectFaces 返回: size=${response.imageWidth}x${response.imageHeight}, faces=${faces.length}, 耗时=${elapsed}ms`,
+    );
+    // 打印前最多 5 个检测到的人脸的 bbox、score 与嵌入信息（长度/维度尝试）
+    try {
+      for (let i = 0; i < Math.min(5, faces.length); i++) {
+        const f = faces[i];
+        const info = this.getEmbeddingInfo(f.embedding);
+        this.logger.log(
+          `[ML] face#${i}: bbox=(${f.boundingBox.x1},${f.boundingBox.y1})-(${f.boundingBox.x2},${f.boundingBox.y2}), score=${f.score.toFixed(
+            3,
+          )}, embed=${info}`,
+        );
+      }
+    } catch (e) {
+      this.logger.warn('[ML] 打印人脸嵌入信息失败', e as any);
+    }
     return {
       imageHeight: response.imageHeight,
       imageWidth: response.imageWidth,
-      faces: response[ModelTask.FACIAL_RECOGNITION],
+      faces,
     };
   }
 
   async encodeImage(imagePath: string, { modelName }: CLIPConfig) {
+    // 关键日志：记录调用参数与耗时
+    this.logger.log(`[ML] encodeImage 调用: path=${imagePath}, model=${modelName}`);
+    const started = Date.now();
     const request = { [ModelTask.SEARCH]: { [ModelType.VISUAL]: { modelName } } };
     const response = await this.predict<ClipVisualResponse>({ imagePath }, request);
-    return response[ModelTask.SEARCH];
+    const elapsed = Date.now() - started;
+    const embedding = response[ModelTask.SEARCH];
+    this.logger.log(`[ML] encodeImage 返回: size=${response.imageWidth}x${response.imageHeight}, 耗时=${elapsed}ms, embed=${this.getEmbeddingInfo(embedding)}`);
+    return embedding;
   }
 
   async encodeText(text: string, { language, modelName }: TextEncodingOptions) {
@@ -243,5 +273,25 @@ export class MachineLearningRepository {
     }
 
     return formData;
+  }
+
+  /**
+   * 将嵌入向量字符串做基础信息提取，便于日志排查：
+   * - 如果是 JSON 数组，输出维度与前 5 个值；否则输出字符串长度。
+   */
+  private getEmbeddingInfo(embedding: string): string {
+    try {
+      const trimmed = embedding?.trim?.() ?? '';
+      if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+        const arr = JSON.parse(trimmed);
+        if (Array.isArray(arr)) {
+          const head = arr.slice(0, 5).map((v: any) => Number(v).toFixed(4));
+          return `dim=${arr.length}, head=[${head.join(', ')}]`;
+        }
+      }
+    } catch {
+      // 忽略解析错误，降级输出字符串长度
+    }
+    return `len=${embedding?.length ?? 0}`;
   }
 }
