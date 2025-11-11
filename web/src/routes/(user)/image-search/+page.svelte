@@ -6,6 +6,12 @@
   import { Button, LoadingSpinner, Text, toastManager } from '@immich/ui';
   import { onMount } from 'svelte';
   import { searchByImage, type ImageSearchResponse } from '$lib/api/image-search';
+  import ImageThumbnail from '$lib/components/assets/thumbnail/image-thumbnail.svelte';
+  import FractionalStars from '$lib/elements/fractional-stars.svelte';
+  import { getAssetThumbnailUrl } from '$lib/utils';
+  import { AssetMediaSize } from '@immich/sdk';
+  import { goto } from '$app/navigation';
+  import { AppRoute } from '$lib/constants';
 
   // 上传文件与搜索模式状态
   let selectedFile: File | null = $state(null);
@@ -185,6 +191,16 @@
   };
 
   //（保留空位，如需在其他区域添加拖拽处理可扩展）
+
+  // 打开资产查看（跳转到 Photos 通用查看路由）
+  const openAsset = async (id: string) => {
+    try {
+      await goto(`${AppRoute.PHOTOS}/${id}`);
+    } catch (error) {
+      console.error('[ImageSearch] 跳转查看失败', error);
+      toastManager.danger('无法打开该文件');
+    }
+  };
 </script>
 
 <svelte:head>
@@ -265,7 +281,7 @@
       </div>
     </div>
 
-    <!-- 结果展示区（列表模式占位），按相近程度由高到低 -->
+    <!-- 结果展示区（列表模式），按相近程度由高到低 -->
     <div class="min-h-40">
       {#if results.length === 0}
         <EmptyPlaceholder text="暂无结果，请上传图片并点击搜索" />
@@ -273,18 +289,51 @@
         <div class="flex flex-col gap-4">
           {#each results as r, idx (idx)}
             <div class="border rounded-md p-3">
-              <div class="flex justify-between">
-                <div class="font-medium">{r.personName ?? `结果 ${idx + 1}`}</div>
-                {#if r.scores}
-                  <div class="text-sm text-immich-fg dark:text-immich-dark-fg">
-                    综合：{r.scores.overall ?? '--'} | 人脸：{r.scores.face ?? '--'} | 颜色：{r.scores.color ?? '--'} | 内容：{r.scores.content ?? '--'}
+              <!-- 标题 + 四维评分星星 -->
+              <div class="flex items-start justify-between">
+                <div class="font-medium text-lg">{r.personName ?? `结果 ${idx + 1}`}</div>
+                <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                  <div class="flex items-center gap-2">
+                    <span class="w-10 text-right">综合</span>
+                    <span style="color:#FFD700" class={typeof r.scores?.overall === 'number' ? '' : 'opacity-60'}>
+                      <FractionalStars value={r.scores?.overall ?? 0} count={5} size="1.2em" title={`综合评分 ${r.scores?.overall ?? '--'}`} />
+                    </span>
                   </div>
-                {/if}
+                  <div class="flex items-center gap-2">
+                    <span class="w-10 text-right">人脸</span>
+                    <span style="color:#FF69B4" class={typeof r.scores?.face === 'number' ? '' : 'opacity-60'}>
+                      <FractionalStars value={r.scores?.face ?? 0} count={5} size="1.1em" title={`人脸 ${r.scores?.face ?? '--'}`} />
+                    </span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="w-10 text-right">颜色</span>
+                    <span style="color:#FF7F50" class={typeof r.scores?.color === 'number' ? '' : 'opacity-60'}>
+                      <FractionalStars value={r.scores?.color ?? 0} count={5} size="1.1em" title={`颜色 ${r.scores?.color ?? '--'}`} />
+                    </span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="w-10 text-right">内容</span>
+                    <span style="color:#4169E1" class={typeof r.scores?.content === 'number' ? '' : 'opacity-60'}>
+                      <FractionalStars value={r.scores?.content ?? 0} count={5} size="1.1em" title={`内容 ${r.scores?.content ?? '--'}`} />
+                    </span>
+                  </div>
+                </div>
               </div>
               {#if r.assets && r.assets.length > 0}
-                <ul class="mt-2 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                <ul class="mt-3 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                   {#each r.assets as a (a.id)}
-                    <li class="text-sm truncate">{a.fileName ?? a.id}</li>
+                    <li class="flex flex-col gap-1">
+                      <button type="button" class="group relative rounded-md overflow-hidden" onclick={() => void openAsset(a.id)}>
+                        <ImageThumbnail
+                          url={getAssetThumbnailUrl({ id: a.id, size: AssetMediaSize.THUMBNAIL })}
+                          altText={a.fileName ?? a.id}
+                          widthStyle="100%"
+                          curve
+                          shadow={false}
+                        />
+                      </button>
+                      <div class="text-xs text-immich-fg dark:text-immich-dark-fg truncate" title={a.fileName ?? a.id}>{a.fileName ?? a.id}</div>
+                    </li>
                   {/each}
                 </ul>
               {/if}

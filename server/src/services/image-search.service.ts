@@ -8,6 +8,7 @@ import { StorageFolder } from 'src/enum';
 import { BaseService } from 'src/services/base.service';
 import { StorageCore } from 'src/cores/storage.core';
 import { getMyPartnerIds } from 'src/utils/asset.util';
+import type { MapAsset } from 'src/dtos/asset-response.dto';
 import type { FaceSearchResult } from 'src/repositories/search.repository';
 
 @Injectable()
@@ -21,11 +22,12 @@ export class ImageSearchService extends BaseService {
    */
   async searchByImage(auth: AuthDto, dto: ImageSearchRequestDto, fileBuffer: Buffer, originalName: string): Promise<ImageSearchResponseDto> {
     const { machineLearning } = await this.getConfig({ withCache: false });
-    const userIds = await getMyPartnerIds({
+    const partnerIds = await getMyPartnerIds({
       userId: auth.user.id,
       repository: this.partnerRepository,
       timelineEnabled: true,
     });
+    const userIds = [auth.user.id, ...partnerIds];
     const maxResults = Math.max(1, dto.maxResults ?? 20);
 
     // 将上传图片写入用户 Upload 目录的临时文件，避免硬编码路径
@@ -36,6 +38,18 @@ export class ImageSearchService extends BaseService {
     this.logger.log(
       `[ImageSearchService] 请求开始: user=${auth.user.id}, mode=${dto.mode}, name=${originalName}, maxResults=${maxResults}, temp=${tempPath}`,
     );
+    // 关键配置与搜索范围日志
+    try {
+      this.logger.log(
+        `[ImageSearchService] ML配置: enabled=${machineLearning.enabled}, clip.enabled=${machineLearning.clip.enabled}, face.enabled=${machineLearning.facialRecognition.enabled ?? true}, clip.model=${machineLearning.clip.modelName}`,
+      );
+      const uidSample = userIds.slice(0, 3).join(', ');
+      this.logger.log(
+        `[ImageSearchService] 参与检索的用户ID数量=${userIds.length}, sample=[${uidSample}${userIds.length > 3 ? ', ...' : ''}]`,
+      );
+    } catch (e) {
+      this.logger.warn('[ImageSearchService] 打印配置/用户范围失败', e as any);
+    }
 
     try {
       if (dto.mode === 'face') {
@@ -69,6 +83,9 @@ export class ImageSearchService extends BaseService {
   ): Promise<ImageSearchResponseDto> {
     // 进行人脸检测
     this.logger.log(`开始人脸检测: ${imagePath}`);
+    this.logger.log(
+      `[Face] 配置: model=${machineLearning.facialRecognition.modelName}, minScore=${machineLearning.facialRecognition.minScore}, maxDistance=${machineLearning.facialRecognition.maxDistance}, userIds=${userIds.length}, maxResults=${maxResults}`,
+    );
     const { minScore, modelName, maxDistance } = machineLearning.facialRecognition;
     const detection = await this.machineLearningRepository.detectFaces(imagePath, { modelName, minScore });
     this.logger.log(
@@ -117,6 +134,9 @@ export class ImageSearchService extends BaseService {
         if (!personName && af.person?.name) {
           personName = af.person.name;
         }
+        if (assets.length <= 5) {
+          this.logger.log(`[人脸] 映射faceId=${id} -> assetId=${af.assetId}, person=${af.person?.name ?? '-'}`);
+        }
       }
 
       // 补充文件名信息（批量查询）
@@ -127,18 +147,23 @@ export class ImageSearchService extends BaseService {
         for (const a of assets) {
           a.fileName = nameMap.get(a.id) || undefined;
         }
+        this.logger.log(`[人脸] 批量补充文件名: 查询数量=${fullAssets.length}`);
       }
 
       // 评分：人脸相似度用 1 - distance 的近似（整体评分等同人脸评分）
       const faceScores = items.map((i: FaceSearchResult) => Math.max(0, 1 - i.distance));
       const overall = faceScores[0] ?? undefined;
 
-      results.push({
-        personName,
-        scores: { overall, face: overall },
-        assets,
-      });
-      this.logger.log(`[人脸] 结果项生成：assets=${assets.length}, person=${personName ?? '-'}，score=${overall ?? '-'}`);
+      if (assets.length > 0) {
+        results.push({
+          personName,
+          scores: { overall, face: overall },
+          assets,
+        });
+        this.logger.log(`[人脸] 结果项生成：assets=${assets.length}, person=${personName ?? '-'}，score=${overall ?? '-'}`);
+      } else {
+        this.logger.warn('[人脸] 无匹配资产，本次检测结果将被忽略');
+      }
     }
     this.logger.log(`[ImageSearchService] 人脸模式总结果: ${results.length}`);
     return { results };
@@ -153,26 +178,46 @@ export class ImageSearchService extends BaseService {
   ): Promise<ImageSearchResponseDto> {
     // 计算整图 CLIP 向量
     const modelName = machineLearning.clip.modelName;
-    this.logger.log(`开始 CLIP 编码: model=${modelName}`);
+    this.logger.log(`开始 CLIP 编码: model=${modelName}, clip.enabled=${machineLearning.clip.enabled}`);
+    try {
+      const dbDim = await this.databaseRepository.getDimensionSize('smart_search');
+      this.logger.log(`[CLIP] 数据库向量维度: smart_search.dim=${dbDim}`);
+    } catch (e) {
+      this.logger.warn('[CLIP] 获取数据库维度失败', e as any);
+    }
     // 传入完整的 CLIPConfig（包含 enabled 与 modelName）
     const embedding = await this.machineLearningRepository.encodeImage(imagePath, machineLearning.clip);
-    this.logger.log(`[CLIP] 编码结果: ${this.getEmbeddingInfo(embedding)}`);
+    this.logger.log(`[CLIP] 编码结果: ${this.getEmbeddingInfo(embedding)}; stats=${this.getEmbeddingStats(embedding)}`);
+    this.logger.log(`[CLIP] 检索范围: userIds=${userIds.length}, maxResults=${maxResults}`);
 
     // 复用现有 smart search（按向量相似排序）。不返回距离值，分数以 '--' 展示
     const { items } = await this.searchRepository.searchSmartWithDistance(
       { page: 1, size: maxResults },
       { userIds, embedding },
     );
-    this.logger.log(`[ImageSearchService] 相似内容检索返回数量: ${items.length}`);
-    if (items.length > 0) {
-      const distances = (items as any).map((i: any) => i.distance).slice(0, Math.min(5, items.length));
-      const ids = items.slice(0, Math.min(5, items.length)).map((i) => i.id);
-      this.logger.log(`[CLIP] 距离样本: ${distances.map((d: number) => d?.toFixed?.(4) ?? d).join(', ')}; assetIds=${ids.join(', ')}`);
+    // searchSmartWithDistance 的返回项为 asset 选取并额外选择了 distance 字段，
+    // 由于构建器的类型较为复杂，TS 推断为 object[]，这里做显式类型收敛到我们需要的字段，避免 TS2339。
+    type ClipSearchItem = Pick<MapAsset, 'id' | 'originalFileName'> & { distance?: number };
+    const typedItems = items as ClipSearchItem[];
+    this.logger.log(`[ImageSearchService] 相似内容检索返回数量: ${typedItems.length}`);
+    if (typedItems.length > 0) {
+      const sampleCount = Math.min(5, typedItems.length);
+      const distances = typedItems.map((i) => i.distance).slice(0, sampleCount);
+      const ids = typedItems.slice(0, sampleCount).map((i) => i.id);
+      this.logger.log(
+        `[CLIP] 距离样本: ${distances
+          .map((d) => (typeof d === 'number' ? d.toFixed(4) : String(d)))
+          .join(', ')}; assetIds=${ids.join(', ')}`,
+      );
     }
 
-    const assets: ImageSearchAssetDto[] = items.map((a) => ({ id: a.id, fileName: a.originalFileName || undefined }));
+    const assets: ImageSearchAssetDto[] = typedItems.map((a) => ({ id: a.id, fileName: a.originalFileName || undefined }));
 
     // 内容相似搜索不涉及人名，评分字段留空（前端以 '--' 展示）
+    if (assets.length === 0) {
+      this.logger.warn('[ImageSearchService] 相似模式无任何匹配资产，返回空结果数组以避免前端展示混淆');
+      return { results: [] };
+    }
     const results: ImageSearchResultDto[] = [
       {
         personName: undefined,
@@ -202,5 +247,30 @@ export class ImageSearchService extends BaseService {
       // 忽略解析错误，降级输出字符串长度
     }
     return `len=${embedding?.length ?? 0}`;
+  }
+
+  /**
+   * 额外输出嵌入向量的统计信息：min/max/mean/std，便于诊断是否为全零/异常值。
+   */
+  private getEmbeddingStats(embedding: string): string {
+    try {
+      const trimmed = embedding?.trim?.() ?? '';
+      if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+        const arr = JSON.parse(trimmed);
+        if (Array.isArray(arr) && arr.length > 0) {
+          const nums = arr.map((v: any) => Number(v) || 0);
+          const n = nums.length;
+          const mean = nums.reduce((a, b) => a + b, 0) / n;
+          const min = Math.min(...nums);
+          const max = Math.max(...nums);
+          const variance = nums.reduce((a, b) => a + (b - mean) * (b - mean), 0) / n;
+          const std = Math.sqrt(variance);
+          return `min=${min.toFixed(4)}, max=${max.toFixed(4)}, mean=${mean.toFixed(4)}, std=${std.toFixed(4)}`;
+        }
+      }
+    } catch {
+      // 忽略解析错误
+    }
+    return 'stats=unavailable';
   }
 }
