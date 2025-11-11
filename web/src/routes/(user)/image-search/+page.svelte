@@ -6,12 +6,12 @@
   import { Button, LoadingSpinner, Text, toastManager } from '@immich/ui';
   import { onMount } from 'svelte';
   import { searchByImage, type ImageSearchResponse } from '$lib/api/image-search';
-  import ImageThumbnail from '$lib/components/assets/thumbnail/image-thumbnail.svelte';
-  import FractionalStars from '$lib/elements/fractional-stars.svelte';
-  import { getAssetThumbnailUrl } from '$lib/utils';
-  import { AssetMediaSize } from '@immich/sdk';
   import { goto } from '$app/navigation';
   import { AppRoute } from '$lib/constants';
+  // 列表模式组件与类型
+  import AssetListView from '$lib/components/assets/asset-list-view.svelte';
+  import type { TimelineAsset } from '$lib/managers/timeline-manager/types';
+  import { AssetVisibility } from '@immich/sdk';
 
   // 上传文件与搜索模式状态
   let selectedFile: File | null = $state(null);
@@ -24,6 +24,43 @@
   type SimilarityScores = { overall?: number; face?: number; color?: number; content?: number };
   type SearchResult = { personName?: string; scores?: SimilarityScores; assets?: { id: string; fileName?: string }[] };
   let results: SearchResult[] = $state([]);
+
+  // 将搜索结果资产转换为最小可用的 TimelineAsset，用于列表模式显示
+  const toMinimalTimelineAsset = (a: { id: string; fileName?: string }): TimelineAsset => {
+    const now = new Date();
+    const dateObj = {
+      year: now.getUTCFullYear(),
+      month: now.getUTCMonth() + 1,
+      day: now.getUTCDate(),
+      hour: now.getUTCHours(),
+      minute: now.getUTCMinutes(),
+      second: now.getUTCSeconds(),
+      millisecond: now.getUTCMilliseconds(),
+    };
+    // 仅提供必要字段，AssetListItem 会在挂载后拉取完整信息
+    return {
+      id: a.id,
+      ownerId: '',
+      ratio: 1,
+      thumbhash: null,
+      localDateTime: dateObj,
+      fileCreatedAt: dateObj,
+      visibility: AssetVisibility.Timeline,
+      isFavorite: false,
+      isTrashed: false,
+      isVideo: false,
+      isImage: true,
+      stack: null,
+      duration: null,
+      projectionType: null,
+      livePhotoVideoId: null,
+      city: null,
+      country: null,
+      people: [],
+      latitude: null,
+      longitude: null,
+    };
+  };
 
   // 引导日志，方便调试
   onMount(() => {
@@ -289,53 +326,23 @@
         <div class="flex flex-col gap-4">
           {#each results as r, idx (idx)}
             <div class="border rounded-md p-3">
-              <!-- 标题 + 四维评分星星 -->
-              <div class="flex items-start justify-between">
-                <div class="font-medium text-lg">{r.personName ?? `结果 ${idx + 1}`}</div>
-                <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                  <div class="flex items-center gap-2">
-                    <span class="w-10 text-right">综合</span>
-                    <span style="color:#FFD700" class={typeof r.scores?.overall === 'number' ? '' : 'opacity-60'}>
-                      <FractionalStars value={r.scores?.overall ?? 0} count={5} size="1.2em" title={`综合评分 ${r.scores?.overall ?? '--'}`} />
-                    </span>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <span class="w-10 text-right">人脸</span>
-                    <span style="color:#FF69B4" class={typeof r.scores?.face === 'number' ? '' : 'opacity-60'}>
-                      <FractionalStars value={r.scores?.face ?? 0} count={5} size="1.1em" title={`人脸 ${r.scores?.face ?? '--'}`} />
-                    </span>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <span class="w-10 text-right">颜色</span>
-                    <span style="color:#FF7F50" class={typeof r.scores?.color === 'number' ? '' : 'opacity-60'}>
-                      <FractionalStars value={r.scores?.color ?? 0} count={5} size="1.1em" title={`颜色 ${r.scores?.color ?? '--'}`} />
-                    </span>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <span class="w-10 text-right">内容</span>
-                    <span style="color:#4169E1" class={typeof r.scores?.content === 'number' ? '' : 'opacity-60'}>
-                      <FractionalStars value={r.scores?.content ?? 0} count={5} size="1.1em" title={`内容 ${r.scores?.content ?? '--'}`} />
-                    </span>
-                  </div>
-                </div>
-              </div>
+              <!-- 移除“结果X”和四维星级评分；仅在有人物名时显示一个简洁标题 -->
+              {#if r.personName}
+                <div class="text-base font-medium mb-2">{r.personName}</div>
+              {/if}
               {#if r.assets && r.assets.length > 0}
-                <ul class="mt-3 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {#each r.assets as a (a.id)}
-                    <li class="flex flex-col gap-1">
-                      <button type="button" class="group relative rounded-md overflow-hidden" onclick={() => void openAsset(a.id)}>
-                        <ImageThumbnail
-                          url={getAssetThumbnailUrl({ id: a.id, size: AssetMediaSize.THUMBNAIL })}
-                          altText={a.fileName ?? a.id}
-                          widthStyle="100%"
-                          curve
-                          shadow={false}
-                        />
-                      </button>
-                      <div class="text-xs text-immich-fg dark:text-immich-dark-fg truncate" title={a.fileName ?? a.id}>{a.fileName ?? a.id}</div>
-                    </li>
-                  {/each}
-                </ul>
+                {@const listAssets = r.assets.map((a) => toMinimalTimelineAsset(a))}
+                <div class="mt-3">
+                  <AssetListView
+                    assets={listAssets}
+                    selectedAssets={new Set()}
+                    selectionCandidates={new Set()}
+                    disabled={false}
+                    showArchiveIcon={false}
+                    on:click={({ detail }) => void openAsset(detail.asset.id)}
+                    on:select={() => { /* 以图搜图页面暂不启用多选 */ }}
+                  />
+                </div>
               {/if}
             </div>
           {/each}
