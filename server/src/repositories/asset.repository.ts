@@ -337,6 +337,24 @@ export class AssetRepository {
     await this.db.deleteFrom('asset').where('ownerId', '=', ownerId).execute();
   }
 
+  @GenerateSql({ params: [DummyValue.UUID] })
+  getUnassignedAssets(ownerId: string) {
+    return this.db
+      .selectFrom('asset')
+      .leftJoin('asset_face', (join) =>
+        join
+          .onRef('asset_face.assetId', '=', 'asset.id')
+          .on('asset_face.deletedAt', 'is', null),
+      )
+      .select(['asset.id', 'asset.type', 'asset.originalFileName', 'asset.originalPath'])
+      .where('asset.ownerId', '=', asUuid(ownerId))
+      .where('asset.deletedAt', 'is', null)
+      .where('asset.visibility', '=', sql.lit(AssetVisibility.Timeline))
+      .groupBy('asset.id')
+      .having((eb) => eb.fn.count('asset_face.personId'), '=', 0)
+      .execute();
+  }
+
   async getByDeviceIds(ownerId: string, deviceId: string, deviceAssetIds: string[]): Promise<string[]> {
     const assets = await this.db
       .selectFrom('asset')

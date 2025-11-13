@@ -33,6 +33,7 @@ import { UserAdminController } from 'src/controllers/user-admin.controller';
 import { UserController } from 'src/controllers/user.controller';
 import { ViewController } from 'src/controllers/view.controller';
 import { ImageSearchController } from 'src/controllers/image-search.controller';
+import { OrganizeController } from 'src/controllers/organize.controller';
 
 export const controllers = [
   ApiKeyController,
@@ -55,6 +56,7 @@ export const controllers = [
   OAuthController,
   PartnerController,
   PersonController,
+  OrganizeController,
   SearchController,
   ImageSearchController,
   ServerController,

@@ -43,6 +43,7 @@ import { UserService } from 'src/services/user.service';
 import { VersionService } from 'src/services/version.service';
 import { ViewService } from 'src/services/view.service';
 import { ImageSearchService } from 'src/services/image-search.service';
+import { OrganizeService } from 'src/services/organize.service';
 
 export const services = [
   ApiKeyService,
@@ -70,6 +71,7 @@ export const services = [
   OcrService,
   PartnerService,
   PersonService,
+  OrganizeService,
   SearchService,
   ImageSearchService,
   ServerService,

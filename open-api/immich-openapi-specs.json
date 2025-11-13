@@ -5148,6 +5148,33 @@
         ]
       }
     },
+    "/organize/unassigned-assets": {
+      "get": {
+        "operationId": "getUnassignedAssets",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "tags": [
+          "Organize"
+        ],
+        "x-immich-permission": "asset.read",
+        "description": "This endpoint requires the `asset.read` permission."
+      }
+    },
     "/partners": {
       "get": {
         "operationId": "getPartners",
