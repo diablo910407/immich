@@ -128,7 +128,7 @@
               <img class="rounded" src={getAssetThumbnailUrl({ id: item.id, size: 'thumbnail' })} alt={item.originalFileName} width="80" height="80" />
               <div class="flex-1 min-w-0">
                 <div class="font-medium truncate">{item.originalFileName}</div>
-                <div class="text-xs text-gray-500 truncate">{item.originalPath}</div>
+                <div class="text-xs text-gray-500 whitespace-normal break-all leading-5">{item.originalPath}</div>
               </div>
               <div class="flex gap-2">
                 <Button color="secondary" onclick={() => openAssignPanel(item)}>归入</Button>
