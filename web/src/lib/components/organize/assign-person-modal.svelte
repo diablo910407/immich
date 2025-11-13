@@ -86,7 +86,7 @@
   });
 </script>
 
-<div class="fixed inset-0 bg-black/50" onclick={onClose}></div>
+<button type="button" class="fixed inset-0 bg-black/50" aria-label="关闭遮罩" tabindex="0" onclick={onClose} onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && onClose()}></button>
 <div class="fixed inset-0 flex items-center justify-center">
   <div class="max-w-[480px] w-[480px] bg-white dark:bg-immich-dark-gray dark:text-immich-dark-fg backdrop-blur-sm px-4 py-5 rounded-xl border border-gray-200 dark:border-gray-800 shadow-xl">
     <p class="text-center text-sm">选择已聚类的人物</p>

@@ -67,9 +67,9 @@
     }
   });
 
-  let colorClass = $derived(colorClasses[user.avatarColor]);
+  let colorClass = $derived(colorClasses[user?.avatarColor ?? 'gray']);
   let sizeClass = $derived(sizeClasses[size]);
-  let title = $derived(label ?? `${user.name} (${user.email})`);
+  let title = $derived(label ?? (user ? `${user.name} (${user.email})` : ''));
   let interactiveClass = $derived(
     interactive
       ? 'border-2 border-immich-primary hover:border-immich-dark-primary dark:hover:border-immich-primary dark:border-immich-dark-primary transition-colors'
@@ -81,11 +81,11 @@
   class="{sizeClass} {colorClass} {interactiveClass} overflow-hidden shadow-md rounded-full"
   title={noTitle ? undefined : title}
 >
-  {#if user.profileImagePath}
+  {#if user?.profileImagePath}
     <img
       bind:this={img}
       src={getProfileImageUrl(user)}
-      alt={$t('profile_image_of_user', { values: { user: title } })}
+      alt={$t('profile_image_of_user', { values: { user: title || '' } })}
       class="h-full w-full object-cover"
       class:hidden={showFallback}
       draggable="false"
@@ -100,7 +100,7 @@
       class:text-2xl={size === 'xxl'}
       class:text-3xl={size === 'xxxl'}
     >
-      {user.name[0] || ''}
+      {user?.name?.[0] || ''}
     </span>
   {/if}
 </figure>

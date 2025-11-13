@@ -186,7 +186,7 @@
             type="button"
             class="flex ps-2"
             onclick={() => (shouldShowAccountInfoPanel = !shouldShowAccountInfoPanel)}
-            title={`${$user.name} (${$user.email})`}
+            title={`${$user?.name ?? ''} (${$user?.email ?? ''})`}
           >
             {#key $user}
               <UserAvatar user={$user} size="md" noTitle interactive />
