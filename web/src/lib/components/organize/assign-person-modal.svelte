@@ -3,26 +3,25 @@
   import { Button, Input, LoadingSpinner, toastManager } from '@immich/ui';
   import ImageThumbnail from '$lib/components/assets/thumbnail/image-thumbnail.svelte';
   import { getPeopleThumbnailUrl, getAssetThumbnailUrl } from '$lib/utils';
+  import SearchPeople from '$lib/components/faces-page/people-search.svelte';
 
   interface Props {
     assetId: string;
     assetType: AssetTypeEnum;
-    anchorLeft: number;
-    anchorTop: number;
     onClose: () => void;
     onAssigned: () => void;
   }
 
-  let { assetId, assetType, anchorLeft, anchorTop, onClose, onAssigned }: Props = $props();
+  let { assetId, assetType, onClose, onAssigned }: Props = $props();
 
   let page = $state(1);
   let loading = $state(false);
   let people: PersonResponseDto[] = $state([]);
-  let searchTerm = $state('');
+  let searchedPeople: PersonResponseDto[] = $state([]);
+  let searchName = $state('');
+  let isShowLoadingSearch = $state(false);
 
-  const filtered = $derived(
-    searchTerm ? people.filter((p) => (p.name || '').toLowerCase().includes(searchTerm.toLowerCase())) : people,
-  );
+  const filtered = $derived(searchName ? searchedPeople : people);
 
   const loadPeople = async () => {
     const { hasNextPage, people: items, total } = await getAllPeople({ page, size: 1000, withHidden: true });
@@ -88,33 +87,37 @@
 </script>
 
 <div class="fixed inset-0 bg-black/50" onclick={onClose}></div>
-
-<div
-  class="absolute max-w-[320px] w-[320px] bg-white dark:bg-immich-dark-gray dark:text-immich-dark-fg backdrop-blur-sm px-3 py-4 rounded-xl border border-gray-200 dark:border-gray-800 shadow-xl"
-  style={`top:${anchorTop}px; left:${anchorLeft}px`}
->
-  <p class="text-center text-sm">选择要标记的人物</p>
-  <div class="my-3">
-    <Input placeholder="按人物查找" bind:value={searchTerm} size="tiny" />
-  </div>
-  <div class="h-62.5 overflow-y-auto mt-2">
-    {#if loading}
-      <div class="flex w-full justify-center"><LoadingSpinner /></div>
-    {:else}
-      {#if filtered.length > 0}
-        <div class="mt-2 rounded-lg">
-          {#each filtered as person (person.id)}
-            <button type="button" class="w-full flex place-items-center gap-2 rounded-lg ps-1 pe-4 py-2 hover:bg-immich-primary/25" onclick={() => onChoose(person)}>
-              <ImageThumbnail curve shadow url={getPeopleThumbnailUrl(person)} altText={person.name} title={person.name} widthStyle="30px" heightStyle="30px" />
-              <p class="text-sm">{person.name}</p>
-            </button>
-          {/each}
-        </div>
-      {:else}
-        <div class="flex items-center justify-center py-4"><p class="text-sm text-gray-500">未找到人物</p></div>
+<div class="fixed inset-0 flex items-center justify-center">
+  <div class="max-w-[480px] w-[480px] bg-white dark:bg-immich-dark-gray dark:text-immich-dark-fg backdrop-blur-sm px-4 py-5 rounded-xl border border-gray-200 dark:border-gray-800 shadow-xl">
+    <p class="text-center text-sm">选择已聚类的人物</p>
+    <div class="mt-3 flex items-center gap-2">
+      <SearchPeople type="input" bind:searchName={searchName} bind:showLoadingSpinner={isShowLoadingSearch} bind:searchedPeopleLocal={searchedPeople} />
+      {#if isShowLoadingSearch}
+        <LoadingSpinner />
       {/if}
-    {/if}
+    </div>
+    <div class="h-80 overflow-y-auto mt-3">
+      {#if loading}
+        <div class="flex w-full justify-center"><LoadingSpinner /></div>
+      {:else}
+        {#if filtered.length > 0}
+          <div class="grid grid-cols-3 gap-3 mt-2">
+            {#each filtered as person (person.id)}
+              <button type="button" class="w-full" onclick={() => onChoose(person)}>
+                <div class="flex items-center gap-2">
+                  <ImageThumbnail curve shadow url={getPeopleThumbnailUrl(person)} altText={person.name} title={person.name} widthStyle="40px" heightStyle="40px" />
+                  <p class="text-sm truncate">{person.name}</p>
+                </div>
+              </button>
+            {/each}
+          </div>
+        {:else}
+          <div class="flex items-center justify-center py-4"><p class="text-sm text-gray-500">未找到人物</p></div>
+        {/if}
+      {/if}
+    </div>
+    <div class="mt-3 flex justify-end gap-2">
+      <Button variant="ghost" onclick={onClose}>返回</Button>
+    </div>
   </div>
-  <Button size="small" fullWidth onclick={onClose} color="danger" class="mt-2">取消</Button>
 </div>
-

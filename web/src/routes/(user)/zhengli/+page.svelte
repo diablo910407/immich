@@ -23,8 +23,6 @@
   let showCreateModal: boolean = $state(false);
   let currentAssetId: string = $state('');
   let currentAssetType: AssetTypeEnum = $state(AssetTypeEnum.IMAGE);
-  let anchorLeft: number = $state(0);
-  let anchorTop: number = $state(0);
 
   const handleSelectTab = async (value: TabKey) => {
     selectedTab = value;
@@ -57,12 +55,9 @@
     }
   };
 
-  const openAssignPanel = (item: UnassignedItem, event: MouseEvent) => {
+  const openAssignPanel = (item: UnassignedItem) => {
     currentAssetId = item.id;
     currentAssetType = item.type;
-    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    anchorLeft = Math.floor(rect.left);
-    anchorTop = Math.floor(rect.top + rect.height + 8);
     showAssignModal = true;
   };
 
@@ -136,7 +131,7 @@
                 <div class="text-xs text-gray-500 truncate">{item.originalPath}</div>
               </div>
               <div class="flex gap-2">
-                <Button color="secondary" onclick={(e) => openAssignPanel(item, e)}>归入</Button>
+                <Button color="secondary" onclick={() => openAssignPanel(item)}>归入</Button>
                 <Button color="primary" onclick={() => openCreatePanel(item)}>新增</Button>
               </div>
             </div>
@@ -149,7 +144,7 @@
   </div>
 
   {#if showAssignModal}
-    <AssignPersonModal assetId={currentAssetId} assetType={currentAssetType} anchorLeft={anchorLeft} anchorTop={anchorTop} onClose={() => (showAssignModal = false)} onAssigned={onAssignedRefresh} />
+    <AssignPersonModal assetId={currentAssetId} assetType={currentAssetType} onClose={() => (showAssignModal = false)} onAssigned={onAssignedRefresh} />
   {/if}
 
   {#if showCreateModal}

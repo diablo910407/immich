@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { AssetTypeEnum, createPerson, getFaces, createFace, reassignFacesById, type PersonResponseDto } from '@immich/sdk';
+  import { AssetTypeEnum, createPerson, updatePerson, getFaces, createFace, reassignFacesById, type PersonResponseDto } from '@immich/sdk';
   import { Button, Input, LoadingSpinner, toastManager } from '@immich/ui';
   import ImageThumbnail from '$lib/components/assets/thumbnail/image-thumbnail.svelte';
   import { getAssetThumbnailUrl } from '$lib/utils';
@@ -57,9 +57,18 @@
       const person = await createPerson({ personCreateDto: { name } });
       const changed = await ensureFaceAssigned(person.id);
       if (changed) {
-        toastManager.success('已新增人物并归入');
+        try {
+          const updated = await updatePerson({ id: person.id, personUpdateDto: { featureFaceAssetId: assetId } });
+          toastManager.success('已新增人物并归入');
+          onCreated(updated);
+        } catch (e) {
+          console.error('set feature face after create failed', e);
+          toastManager.warning('已归入，但头像设置失败');
+          onCreated(person);
+        }
+      } else {
+        onCreated(person);
       }
-      onCreated(person);
       onClose();
     } catch (error) {
       console.error('create-person-modal error', error);
