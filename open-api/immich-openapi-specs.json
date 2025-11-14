@@ -5605,6 +5605,43 @@
         "description": "This endpoint requires the `person.update` permission."
       }
     },
+    "/people-audit/paths": {
+      "get": {
+        "operationId": "getPeoplePaths",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "tags": [
+          "PeopleAudit"
+        ],
+        "x-immich-permission": "person.read",
+        "description": "This endpoint requires the `person.read` permission."
+      }
+    },
     "/people/{id}": {
       "delete": {
         "operationId": "deletePerson",

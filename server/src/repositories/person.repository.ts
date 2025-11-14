@@ -385,6 +385,29 @@ export class PersonRepository {
       .executeTakeFirstOrThrow();
   }
 
+  streamPersonAssetOriginalPaths(userId: string) {
+    return this.db
+      .selectFrom('person')
+      .innerJoin('asset_face', 'asset_face.personId', 'person.id')
+      .innerJoin('asset', (join) =>
+        join
+          .onRef('asset.id', '=', 'asset_face.assetId')
+          .on('asset.visibility', '=', sql.lit(AssetVisibility.Timeline))
+          .on('asset.deletedAt', 'is', null),
+      )
+      .select([
+        'person.id as personId',
+        'person.ownerId as ownerId',
+        'person.name as personName',
+        'person.thumbnailPath as thumbnailPath',
+        'asset.originalPath as originalPath',
+        'asset.isExternal as isExternal',
+      ])
+      .where('person.ownerId', '=', userId)
+      .where('asset_face.deletedAt', 'is', null)
+      .stream();
+  }
+
   create(person: Insertable<PersonTable>) {
     return this.db.insertInto('person').values(person).returningAll().executeTakeFirstOrThrow();
   }

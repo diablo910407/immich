@@ -149,12 +149,7 @@
     ></SideBarLink>
   {/if}
 
-  <SideBarLink
-    title={"整理"}
-    href={resolve('/(user)/zhengli')}
-    bind:isSelected={isOrganizeSelected}
-    icon={mdiToolboxOutline}
-  />
+  <SideBarLink title="整理" href={resolve('/(user)/zhengli')} bind:isSelected={isOrganizeSelected} icon={mdiToolboxOutline} />
 
   <BottomInfo />
 </Sidebar>
