@@ -44,6 +44,7 @@
   let isTrashSelected: boolean = $state(false);
   let isUtilitiesSelected: boolean = $state(false);
   let isLockedFolderSelected: boolean = $state(false);
+  let isOrganizeSelected: boolean = $state(false);
 </script>
 
 <Sidebar ariaLabel={$t('primary')}>
@@ -147,6 +148,8 @@
       icon={isTrashSelected ? mdiTrashCan : mdiTrashCanOutline}
     ></SideBarLink>
   {/if}
+
+  <SideBarLink title="整理" href={resolve('/(user)/zhengli')} bind:isSelected={isOrganizeSelected} icon={mdiToolboxOutline} />
 
   <BottomInfo />
 </Sidebar>

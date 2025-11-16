@@ -352,6 +352,18 @@ export class SearchRepository {
   }
 
   @GenerateSql({
+    params: [[DummyValue.UUID]],
+  })
+  async getEmbeddingsByAssetIds(assetIds: string[]) {
+    if (assetIds.length === 0) return [];
+    return this.db
+      .selectFrom('smart_search')
+      .select(['assetId', 'embedding'])
+      .where('assetId', 'in', assetIds)
+      .execute();
+  }
+
+  @GenerateSql({
     params: [
       {
         userIds: [DummyValue.UUID],

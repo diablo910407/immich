@@ -19,6 +19,7 @@
     header?: Snippet;
     sidebar?: Snippet;
     buttons?: Snippet;
+    stackButtons?: boolean;
     children?: Snippet;
   }
 
@@ -32,11 +33,14 @@
     header,
     sidebar,
     buttons,
+    stackButtons = false,
     children,
   }: Props = $props();
 
   let scrollbarClass = $derived(scrollbar ? 'immich-scrollbar' : 'scrollbar-hidden');
-  let hasTitleClass = $derived((title || buttons) ? 'top-16 h-[calc(100%-(--spacing(16)))]' : 'top-0 h-full');
+  let hasTitleClass = $derived((title || buttons)
+    ? (stackButtons ? 'top-24 h-[calc(100%-(--spacing(24)))]' : 'top-16 h-[calc(100%-(--spacing(16)))]')
+    : 'top-0 h-full');
 </script>
 
 <header>
@@ -65,7 +69,7 @@
     </div>
 
     {#if title || buttons}
-      <div class="absolute flex h-16 w-full place-items-center justify-between border-b p-2 text-dark bg-white dark:bg-immich-dark-bg z-10">
+      <div class="absolute w-full border-b p-2 text-dark bg-white dark:bg-immich-dark-bg z-10 {stackButtons ? 'h-24 flex flex-col' : 'h-16 flex place-items-center justify-between'}">
         <div class="flex gap-2 items-center">
           {#if title}
             <div class="font-medium outline-none pe-8" tabindex="-1" id={headerId}>{title}</div>
@@ -74,7 +78,11 @@
             <p class="text-sm text-gray-400 dark:text-gray-600">{description}</p>
           {/if}
         </div>
-        {@render buttons?.()}
+        {#if !stackButtons}
+          {@render buttons?.()}
+        {:else}
+          <div class="mt-1">{@render buttons?.()}</div>
+        {/if}
       </div>
     {/if}
   </main>

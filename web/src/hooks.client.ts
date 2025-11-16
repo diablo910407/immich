@@ -32,6 +32,14 @@ const parseError = (error: unknown, status: number, message: string) => {
 
 export const handleError: HandleClientError = ({ error, status, message }) => {
   const result = parseError(error, status, message);
+  const msg = String((error as any)?.message || result.message || '');
+  const name = String((error as any)?.name || '').toLowerCase();
+  const isAbort = name === 'aborterror' || /AbortError/i.test(msg) || /net::ERR_ABORTED/i.test(msg);
+  const isDynamicImportAbort = /Failed to fetch dynamically imported module/i.test(msg);
+  if (isAbort || isDynamicImportAbort) {
+    console.debug(`[hooks.client.ts]:handleError ignored: ${msg}`);
+    return result;
+  }
   console.error(`[hooks.client.ts]:handleError ${result.message}`, error);
   return result;
 };
