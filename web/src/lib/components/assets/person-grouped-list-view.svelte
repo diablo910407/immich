@@ -7,11 +7,13 @@
   import { handleError } from '$lib/utils/handle-error';
   import {
     getAllPeople,
+    getPersonStatistics,
     searchAssets,
     AssetTypeEnum,
     type AssetResponseDto,
     type PersonResponseDto,
   } from '@immich/sdk';
+  import { Button } from '@immich/ui';
   import { getPeopleThumbnailUrl } from '$lib/utils';
   import ImageThumbnail from '$lib/components/assets/thumbnail/image-thumbnail.svelte';
   import FractionalStars from '$lib/elements/fractional-stars.svelte';
@@ -49,6 +51,9 @@
     hasNext: boolean;
     loading: boolean;
     loadedOnce: boolean;
+    expanded: boolean;
+    previewAssets: TimelineAsset[];
+    totalCount?: number;
   };
 
   let groups: PersonGroup[] = $state([]);
@@ -75,12 +80,49 @@
     });
   };
 
+  const samplePreview = (assets: TimelineAsset[], count = 3) => {
+    const n = Math.min(count, assets.length);
+    if (n <= 0) {
+      return [] as TimelineAsset[];
+    }
+    const picked: TimelineAsset[] = [];
+    const usedIdx: number[] = [];
+    while (picked.length < n) {
+      const idx = Math.floor(Math.random() * assets.length);
+      if (!usedIdx.includes(idx)) {
+        usedIdx.push(idx);
+        picked.push(assets[idx]);
+      }
+    }
+    return picked;
+  };
+
+  type PersonWithCounts = PersonResponseDto & {
+    assetsCount?: number;
+    numberOfAssets?: number;
+    assetCount?: number;
+    totalAssets?: number;
+    total?: number;
+  };
+  const getPersonAssetCount = (p: PersonResponseDto): number => {
+    const anyp = p as PersonWithCounts;
+    const v = anyp.assetsCount ?? anyp.numberOfAssets ?? anyp.assetCount ?? anyp.totalAssets ?? anyp.total ?? 0;
+    return Number(v) || 0;
+  };
+
+  const updatePreviewAssets = (group: PersonGroup) => {
+    if (!group.expanded) {
+      group.previewAssets = samplePreview(group.assets, 3);
+      console.debug('[PersonList] 更新预览资产数量:', group.previewAssets.length, '人物:', group.person.name);
+    }
+  };
+
   const initGroups = async () => {
     try {
       // 如果传入了特定人物，则仅初始化该人物的分组
       if (person) {
         groups = [
-          { person, assets: [], page: 1, hasNext: true, loading: false, loadedOnce: false },
+          { person, assets: [], page: 1, hasNext: true, loading: false, loadedOnce: false, expanded: true, previewAssets: [] },
         ];
         ratingMap[person.id] = personRatingStore.ensure(person.id);
         console.log('[PersonList] 以人物过滤模式初始化:', person.name);
@@ -88,7 +130,7 @@
         // 仅加载未隐藏人物，保证照片界面不显示被隐藏人物
         const { people } = await getAllPeople({ withHidden: false });
         const sorted = sortBy === 'overall' ? sortPersonGroupsDefault(people) : sortPersonGroupsBy(people, sortBy);
-        groups = sorted.map((p) => ({ person: p, assets: [], page: 1, hasNext: true, loading: false, loadedOnce: false }));
+        groups = sorted.map((p) => ({ person: p, assets: [], page: 1, hasNext: true, loading: false, loadedOnce: false, expanded: false, previewAssets: [] }));
         console.log('[PersonList] 初始化人物组数量(不含隐藏):', groups.length, '排序维度:', sortBy);
         // 初始化评分映射，避免首次渲染为空
         for (const p of sorted) {
@@ -114,6 +156,7 @@
       sortAssetsForGroup(items);
       const timelineAssets = items.map((a) => toTimelineAsset(a));
       group.assets.push(...timelineAssets);
+      updatePreviewAssets(group);
       const next = Number(assets.nextPage) || 0;
       group.page = next || group.page + 1;
       group.hasNext = next > 0;
@@ -129,7 +172,16 @@
     const io = new IntersectionObserver((entries) => {
       for (const entry of entries) {
         if (entry.isIntersecting) {
-          void loadGroupAssets(group);
+          void (async () => {
+            try {
+              const stats = await getPersonStatistics({ id: group.person.id });
+              group.totalCount = stats.assets ?? getPersonAssetCount(group.person);
+              console.debug('[PersonList] 获取人物统计总数:', group.person.name, '总数:', group.totalCount);
+            } catch (error) {
+              console.warn('[PersonList] 获取人物详情失败，使用已有字段回退', error);
+            }
+            await loadGroupAssets(group);
+          })();
           io.disconnect();
           break;
         }
@@ -205,79 +257,85 @@
     {#each groups as group (group.person.id)}
       <div class="mb-8">
         <div class="flex items-start justify-between mb-3" use:intersectOnce={group}>
-          <div class="flex items-start gap-3">
+          <div class="flex items-start gap-3 w-full">
             <div class="h-12 w-12 rounded-full bg-gray-300 dark:bg-gray-700 overflow-hidden shrink-0">
               <ImageThumbnail circle url={getPeopleThumbnailUrl(group.person)} altText={group.person.name} widthStyle="48px" heightStyle="48px" />
             </div>
-            <div class="flex flex-col gap-1">
+            <div class="flex-1 flex flex-col gap-1">
               <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 leading-tight">{group.person.name}</h3>
-              <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-700 dark:text-gray-300">
-                <div class="flex items-center gap-2">
-                  <span class="w-10 text-right">综合</span>
-                  <span style="color:#FFD700">
-                    <FractionalStars value={getPersonRating(group.person.id).overall} count={5} size="1.2em" title={`综合评分 ${getPersonRating(group.person.id).overall}`} />
-                  </span>
+              <div class="flex items-center justify-between">
+                <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-700 dark:text-gray-300">
+                  <div class="flex items-center gap-2">
+                    <span class="w-10 text-right">综合</span>
+                    <span style="color:#FFD700">
+                      <FractionalStars value={getPersonRating(group.person.id).overall} count={5} size="1.2em" title={`综合评分 ${getPersonRating(group.person.id).overall}`} />
+                    </span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="w-10 text-right">颜值</span>
+                    <span style="color:#FF69B4">
+                      <FractionalStars value={getPersonRating(group.person.id).looks} count={5} size="1.1em" title={`颜值 ${getPersonRating(group.person.id).looks}`} />
+                    </span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="w-10 text-right">身材</span>
+                    <span style="color:#FF7F50">
+                      <FractionalStars value={getPersonRating(group.person.id).body} count={5} size="1.1em" title={`身材 ${getPersonRating(group.person.id).body}`} />
+                    </span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="w-10 text-right">内容</span>
+                    <span style="color:#4169E1">
+                      <FractionalStars value={getPersonRating(group.person.id).content} count={5} size="1.1em" title={`内容 ${getPersonRating(group.person.id).content}`} />
+                    </span>
+                  </div>
                 </div>
                 <div class="flex items-center gap-2">
-                  <span class="w-10 text-right">颜值</span>
-                  <span style="color:#FF69B4">
-                    <FractionalStars value={getPersonRating(group.person.id).looks} count={5} size="1.1em" title={`颜值 ${getPersonRating(group.person.id).looks}`} />
-                  </span>
-                </div>
-                <div class="flex items-center gap-2">
-                  <span class="w-10 text-right">身材</span>
-                  <span style="color:#FF7F50">
-                    <FractionalStars value={getPersonRating(group.person.id).body} count={5} size="1.1em" title={`身材 ${getPersonRating(group.person.id).body}`} />
-                  </span>
-                </div>
-                <div class="flex items-center gap-2">
-                  <span class="w-10 text-right">内容</span>
-                  <span style="color:#4169E1">
-                    <FractionalStars value={getPersonRating(group.person.id).content} count={5} size="1.1em" title={`内容 ${getPersonRating(group.person.id).content}`} />
-                  </span>
+                  {#if group.loading}
+                    <span class="text-sm text-gray-500">加载中...</span>
+                  {/if}
+                  {#if !group.expanded && (group.totalCount ?? 0) > 3}
+                    <Button size="small" variant="ghost" color="primary" onclick={() => { group.expanded = true; console.log('[PersonList] 展开全部文件:', group.person.name, '总数:', group.totalCount); }}>
+                      展示全部{group.totalCount}个文件
+                    </Button>
+                  {:else if group.expanded && group.hasNext}
+                    <Button size="small" variant="ghost" color="secondary" onclick={() => void loadGroupAssets(group)}>
+                      加载更多
+                    </Button>
+                  {/if}
                 </div>
               </div>
             </div>
           </div>
-          <div class="flex items-center gap-2">
-            {#if group.loading}
-              <span class="text-sm text-gray-500">加载中...</span>
-            {/if}
-            {#if group.hasNext}
-              <button type="button" class="px-3 py-1 text-sm rounded bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700" onclick={() => void loadGroupAssets(group)}>
-                加载更多
-              </button>
-            {/if}
-          </div>
         </div>
 
-        {#if group.assets.length === 0 && group.loadedOnce && !group.loading}
-          <div class="text-sm text-gray-600 dark:text-gray-400">该人物暂无资产</div>
-        {:else}
-          {#if group.assets.length > 0}
-            {@const selectedAssets = getSelectedSet(group.assets)}
-            {@const selectionCandidates = getCandidateSet(group.assets)}
-            <AssetListView
-              assets={group.assets}
-              {selectedAssets}
-              {selectionCandidates}
-              disabled={false}
-              {showArchiveIcon}
-              on:click={({ detail }) => onAssetClick(detail.asset)}
-              on:select={({ detail }) => onAssetSelect(detail.asset)}
-              on:mouseEvent={({ detail }) => {
-                // 简化：仅记录候选但不实现跨组范围选择
-                if (detail.asset) {
-                  assetInteraction.setAssetSelectionCandidates([detail.asset]);
-                }
-              }}
-            />
-          {:else if group.loading}
-            <Skeleton height={180} title="加载中" />
-          {/if}
+      {#if group.assets.length === 0 && group.loadedOnce && !group.loading}
+        <div class="text-sm text-gray-600 dark:text-gray-400">该人物暂无资产</div>
+      {:else}
+        {#if (group.expanded && group.assets.length > 0) || (!group.expanded && group.previewAssets.length > 0)}
+          {@const renderAssets = group.expanded ? group.assets : group.previewAssets}
+          {@const selectedAssets = getSelectedSet(renderAssets)}
+          {@const selectionCandidates = getCandidateSet(renderAssets)}
+          <AssetListView
+            assets={renderAssets}
+            {selectedAssets}
+            {selectionCandidates}
+            disabled={false}
+            {showArchiveIcon}
+            on:click={({ detail }) => onAssetClick(detail.asset)}
+            on:select={({ detail }) => onAssetSelect(detail.asset)}
+            on:mouseEvent={({ detail }) => {
+              if (detail.asset) {
+                assetInteraction.setAssetSelectionCandidates([detail.asset]);
+              }
+            }}
+          />
+        {:else if group.loading}
+          <Skeleton height={180} title="加载中" />
         {/if}
-      </div>
-    {/each}
+      {/if}
+    </div>
+  {/each}
   {/if}
 </section>
 
