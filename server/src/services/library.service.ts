@@ -643,7 +643,15 @@ export class LibraryService extends BaseService {
 
     for await (const pathBatch of pathsOnDisk) {
       crawlCount += pathBatch.length;
-      const paths = await this.assetRepository.filterNewExternalAssetPaths(library.id, pathBatch);
+      let batch = pathBatch;
+      const config = await this.getConfig({ withCache: true });
+      if (config.ffmpeg.ignoreExternalLibraryVideos) {
+        batch = pathBatch.filter((p) => !mimeTypes.isVideo(p));
+        this.logger.debug(
+          `Ignoring ${pathBatch.length - batch.length} video file(s) in current batch for library ${library.id}`,
+        );
+      }
+      const paths = await this.assetRepository.filterNewExternalAssetPaths(library.id, batch);
 
       if (paths.length > 0) {
         importCount += paths.length;

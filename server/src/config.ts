@@ -45,6 +45,7 @@ export interface SystemConfig {
     accel: TranscodeHardwareAcceleration;
     accelDecode: boolean;
     tonemap: ToneMapping;
+    ignoreExternalLibraryVideos: boolean;
   };
   job: Record<ConcurrentQueueName, { concurrency: number }>;
   logging: {
@@ -221,6 +222,7 @@ export const defaults = Object.freeze<SystemConfig>({
     tonemap: ToneMapping.Hable,
     accel: TranscodeHardwareAcceleration.Disabled,
     accelDecode: false,
+    ignoreExternalLibraryVideos: false,
   },
   job: {
     [QueueName.BackgroundTask]: { concurrency: 5 },

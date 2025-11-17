@@ -16701,6 +16701,9 @@
             "minimum": 0,
             "type": "integer"
           },
+          "ignoreExternalLibraryVideos": {
+            "type": "boolean"
+          },
           "maxBitrate": {
             "type": "string"
           },
@@ -16767,6 +16770,7 @@
           "cqMode",
           "crf",
           "gopSize",
+          "ignoreExternalLibraryVideos",
           "maxBitrate",
           "preferredHwDevice",
           "preset",

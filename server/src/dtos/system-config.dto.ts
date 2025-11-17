@@ -143,6 +143,9 @@ export class SystemConfigFFmpegDto {
 
   @ValidateEnum({ enum: ToneMapping, name: 'ToneMapping' })
   tonemap!: ToneMapping;
+
+  @ValidateBoolean()
+  ignoreExternalLibraryVideos!: boolean;
 }
 
 class JobSettingsDto {

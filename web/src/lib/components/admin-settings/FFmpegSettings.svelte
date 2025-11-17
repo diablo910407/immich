@@ -294,6 +294,14 @@
               bind:checked={config.ffmpeg.twoPass}
               isEdited={config.ffmpeg.twoPass !== savedConfig.ffmpeg.twoPass}
             />
+
+            <SettingSwitch
+              title={'忽略视频文件'}
+              {disabled}
+              subtitle={'开启后，扫描外部库时跳过所有视频文件'}
+              bind:checked={(config.ffmpeg as any).ignoreExternalLibraryVideos}
+              isEdited={(config.ffmpeg as any).ignoreExternalLibraryVideos !== (savedConfig.ffmpeg as any).ignoreExternalLibraryVideos}
+            />
           </div>
         </SettingAccordion>
 
