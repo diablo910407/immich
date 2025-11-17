@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { resolve } from '$app/paths';
+  import { resolve, base } from '$app/paths';
   import BottomInfo from '$lib/components/shared-components/side-bar/bottom-info.svelte';
   import RecentAlbums from '$lib/components/shared-components/side-bar/recent-albums.svelte';
   import Sidebar from '$lib/components/sidebar/sidebar.svelte';
@@ -149,7 +149,7 @@
     ></SideBarLink>
   {/if}
 
-  <SideBarLink title="整理" href={resolve('/(user)/zhengli')} bind:isSelected={isOrganizeSelected} icon={mdiToolboxOutline} />
+  <SideBarLink title="整理" href={`${base}/zhengli`} bind:isSelected={isOrganizeSelected} icon={mdiToolboxOutline} />
 
   <BottomInfo />
 </Sidebar>
