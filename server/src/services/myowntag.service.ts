@@ -32,6 +32,7 @@ function resolveDataDir() {
 
 const DATA_DIR = resolveDataDir();
 const FILE_PATH = path.join(DATA_DIR, 'myowntag-labels.json');
+const PERSON_FILE_PATH = path.join(DATA_DIR, 'myowntag-person-labels.json');
 
 function ensureFile() {
   try {
@@ -40,6 +41,9 @@ function ensureFile() {
     }
     if (!fs.existsSync(FILE_PATH)) {
       fs.writeFileSync(FILE_PATH, JSON.stringify({ types: [], skills: [] }), { encoding: 'utf8' });
+    }
+    if (!fs.existsSync(PERSON_FILE_PATH)) {
+      fs.writeFileSync(PERSON_FILE_PATH, JSON.stringify({ persons: {} }), { encoding: 'utf8' });
     }
   } catch (error) {
     console.error('[myowntag] 初始化目录/文件失败', error);
@@ -72,6 +76,78 @@ export class MyOwnTagService {
       console.debug('[myowntag] 已保存', { typeCount: data.types.length, skillCount: data.skills.length });
     } catch (error) {
       console.error('[myowntag] 保存失败', error);
+      throw error;
+    }
+  }
+
+  getPersonLabels(personId: string): { labels: { typeId: string; skillId?: string }[] } {
+    ensureFile();
+    try {
+      const labels = this.getLabels();
+      const raw = fs.readFileSync(PERSON_FILE_PATH, { encoding: 'utf8' });
+      const data = JSON.parse(raw) as { persons: Record<string, { labels: { typeId: string; skillId?: string }[] }> };
+      const typeIds = new Set(labels.types.map((t) => t.id));
+      const skillIds = new Set(labels.skills.map((s) => s.id));
+      const person = data.persons[personId];
+      const source = person?.labels || [];
+      const result: { typeId: string; skillId?: string }[] = [];
+      const seenType = new Set<string>();
+      const seenSkill = new Set<string>();
+      for (const l of source) {
+        if (!typeIds.has(l.typeId)) {
+          continue;
+        }
+        if (l.skillId && skillIds.has(l.skillId)) {
+          if (!seenSkill.has(l.skillId)) {
+            seenSkill.add(l.skillId);
+            result.push({ typeId: l.typeId, skillId: l.skillId });
+          }
+        } else {
+          if (!seenType.has(l.typeId)) {
+            seenType.add(l.typeId);
+            result.push({ typeId: l.typeId });
+          }
+        }
+      }
+      return { labels: result };
+    } catch (error) {
+      console.error('[myowntag] 读取人物标签失败', error);
+      return { labels: [] };
+    }
+  }
+
+  savePersonLabels(personId: string, labels: { typeId: string; skillId?: string }[]): void {
+    ensureFile();
+    try {
+      const currentRaw = fs.readFileSync(PERSON_FILE_PATH, { encoding: 'utf8' });
+      const data = JSON.parse(currentRaw) as { persons: Record<string, { labels: { typeId: string; skillId?: string }[] }> };
+      const all = this.getLabels();
+      const typeIds = new Set(all.types.map((t) => t.id));
+      const skillIds = new Set(all.skills.map((s) => s.id));
+      const result: { typeId: string; skillId?: string }[] = [];
+      const seenType = new Set<string>();
+      const seenSkill = new Set<string>();
+      for (const l of labels) {
+        if (!typeIds.has(l.typeId)) {
+          continue;
+        }
+        if (l.skillId && skillIds.has(l.skillId)) {
+          if (!seenSkill.has(l.skillId)) {
+            seenSkill.add(l.skillId);
+            result.push({ typeId: l.typeId, skillId: l.skillId });
+          }
+        } else {
+          if (!seenType.has(l.typeId)) {
+            seenType.add(l.typeId);
+            result.push({ typeId: l.typeId });
+          }
+        }
+      }
+      data.persons[personId] = { labels: result };
+      fs.writeFileSync(PERSON_FILE_PATH, JSON.stringify(data, null, 2), { encoding: 'utf8' });
+      console.debug('[myowntag] 人物标签已保存', { personId, count: result.length });
+    } catch (error) {
+      console.error('[myowntag] 保存人物标签失败', error);
       throw error;
     }
   }

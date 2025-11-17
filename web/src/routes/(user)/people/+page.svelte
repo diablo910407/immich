@@ -30,6 +30,7 @@
   import { sortPersonGroupsBy, sortPersonGroupsDefault, type PersonSortDimension } from '$lib/utils/person-group-sort-by';
   import { personRatingStore } from '$lib/stores/person-rating.store';
   import { SvelteSet } from 'svelte/reactivity';
+  import MyOwnTagPersonLabels from '$lib/components/myowntag/person-labels.svelte';
 
   interface Props {
     data: PageData;
@@ -444,6 +445,8 @@
             onfocusout={() => onNameChangeSubmit(newName, person)}
             oninput={(event) => onNameChangeInputUpdate(event)}
           />
+
+          <MyOwnTagPersonLabels {person} />
         </div>
       {/snippet}
     </PeopleInfiniteScroll>

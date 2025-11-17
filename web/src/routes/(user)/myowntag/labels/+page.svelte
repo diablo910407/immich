@@ -2,6 +2,7 @@
   import { goto } from '$app/navigation';
   import UserPageLayout from '$lib/components/layouts/user-page-layout.svelte';
   import { AppRoute } from '$lib/constants';
+  import { invalidateLabelsCache } from '$lib/utils/myowntag-client';
   import { Button, IconButton } from '@immich/ui';
   import { mdiArrowLeft, mdiContentSaveOutline, mdiPencilOutline, mdiDeleteOutline, mdiPlus } from '@mdi/js';
   import { onMount } from 'svelte';
@@ -81,6 +82,7 @@
         throw new Error(await res.text());
       }
       console.log('[myowntag] 保存成功');
+      invalidateLabelsCache();
       await goto(AppRoute.PEOPLE);
     } catch (error) {
       console.error('[myowntag] 保存失败', error);

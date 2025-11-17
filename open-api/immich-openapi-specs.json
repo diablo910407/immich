@@ -4795,6 +4795,76 @@
         "description": "This endpoint requires the `person.update` permission."
       }
     },
+    "/myowntag/person/{id}/labels": {
+      "get": {
+        "operationId": "getPersonLabels",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "tags": [
+          "MyOwnTag"
+        ],
+        "x-immich-permission": "person.read",
+        "description": "This endpoint requires the `person.read` permission."
+      },
+      "post": {
+        "operationId": "savePersonLabels",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "tags": [
+          "MyOwnTag"
+        ],
+        "x-immich-permission": "person.update",
+        "description": "This endpoint requires the `person.update` permission."
+      }
+    },
     "/notifications": {
       "delete": {
         "operationId": "deleteNotifications",
