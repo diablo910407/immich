@@ -35,6 +35,7 @@ import { ViewController } from 'src/controllers/view.controller';
 import { ImageSearchController } from 'src/controllers/image-search.controller';
 import { OrganizeController } from 'src/controllers/organize.controller';
 import { PeopleAuditController } from 'src/controllers/people-audit.controller';
+import { MyOwnTagController } from 'src/controllers/myowntag.controller';
 
 export const controllers = [
   ApiKeyController,
@@ -58,6 +59,7 @@ export const controllers = [
   PartnerController,
   PersonController,
   PeopleAuditController,
+  MyOwnTagController,
   OrganizeController,
   SearchController,
   ImageSearchController,

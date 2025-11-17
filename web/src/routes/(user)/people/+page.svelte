@@ -21,7 +21,7 @@
   import { clearQueryParam } from '$lib/utils/navigation';
   import { getAllPeople, getPerson, searchPerson, updatePerson, type PersonResponseDto } from '@immich/sdk';
   import { Button, Icon, modalManager, toastManager } from '@immich/ui';
-  import { mdiAccountOff, mdiEyeOutline } from '@mdi/js';
+  import { mdiAccountOff, mdiEyeOutline, mdiTagOutline } from '@mdi/js';
   import { onMount } from 'svelte';
   import { t } from 'svelte-i18n';
   import { quintOut } from 'svelte/easing';
@@ -385,6 +385,14 @@
             />
           </div>
         </div>
+        <Button
+          leadingIcon={mdiTagOutline}
+          size="small"
+          variant="ghost"
+          color="secondary"
+          onclick={() => goto('/myowntag/labels')}
+          >管理标签</Button
+        >
         <SortDimensionButtons
           selected={sortByDimension}
           onChange={(d) => {

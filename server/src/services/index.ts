@@ -45,6 +45,7 @@ import { ViewService } from 'src/services/view.service';
 import { ImageSearchService } from 'src/services/image-search.service';
 import { OrganizeService } from 'src/services/organize.service';
 import { PeopleAuditService } from 'src/services/people-audit.service';
+import { MyOwnTagService } from 'src/services/myowntag.service';
 
 export const services = [
   ApiKeyService,
@@ -73,6 +74,7 @@ export const services = [
   PartnerService,
   PersonService,
   PeopleAuditService,
+  MyOwnTagService,
   OrganizeService,
   SearchService,
   ImageSearchService,
