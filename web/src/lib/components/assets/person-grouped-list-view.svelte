@@ -33,6 +33,7 @@
     sortBy?: PersonSortDimension;
     // 可选：限定只显示某一个人物（用于人物详情页的列表模式）
     person?: PersonResponseDto;
+    tagFilter?: { typeIds: string[]; skillIds: string[] };
   }
 
   let {
@@ -43,6 +44,7 @@
     onSelect = () => {},
     sortBy = 'overall',
     person,
+    tagFilter,
   }: Props = $props();
 
   type PersonGroup = {
@@ -58,6 +60,7 @@
   };
 
   let groups: PersonGroup[] = $state([]);
+  let filteredGroups: PersonGroup[] = $state([]);
   let isInitializing = $state(true);
   let ratingMap = $state<Record<string, PersonRatingDimensions>>({});
   let myowntagTypes = $state<{ id: string; name: string }[]>([]);
@@ -255,6 +258,53 @@
   $effect(() => { void initGroups(); });
   $effect(() => { void ensureMyOwnTagDict(); });
 
+  const prefetchAllLabels = async () => {
+    const ids = groups.map((g) => g.person.id);
+    const pool: Promise<void>[] = [];
+    const concurrency = 5;
+    let i = 0;
+    const next = async () => {
+      if (i >= ids.length) {
+        return;
+      }
+      const id = ids[i++];
+      await loadPersonLabels(id);
+      await next();
+    };
+    for (let k = 0; k < concurrency; k++) {
+      pool.push(next());
+    }
+    await Promise.all(pool);
+  };
+
+  $effect(() => {
+    if (person) {
+      filteredGroups = groups;
+      return;
+    }
+    const typeSel = new Set(tagFilter?.typeIds || []);
+    const skillSel = new Set(tagFilter?.skillIds || []);
+    const hasFilter = typeSel.size > 0 || skillSel.size > 0;
+    if (!hasFilter) {
+      filteredGroups = groups;
+      return;
+    }
+    void prefetchAllLabels().then(() => {
+      filteredGroups = groups.filter((g) => {
+        const labels = labelsMap[g.person.id] || [];
+        for (const l of labels) {
+          if (skillSel.size > 0 && l.skillId && skillSel.has(l.skillId)) {
+            return true;
+          }
+          if (typeSel.size > 0 && typeSel.has(l.typeId)) {
+            return true;
+          }
+        }
+        return false;
+      });
+    });
+  });
+
   // 监听排序维度变更，动态重排已有分组（不重新拉取数据）
   $effect(() => {
     // 初始化阶段跳过
@@ -297,7 +347,7 @@
   {#if isInitializing}
     <Skeleton height={240} title="加载人物分组中" />
   {:else}
-    {#each groups as group (group.person.id)}
+    {#each (person ? groups : filteredGroups) as group (group.person.id)}
       <div class="mb-8">
         <div class="flex items-start justify-between mb-3" use:intersectOnce={group}>
           <div class="flex items-start gap-3 w-full">
