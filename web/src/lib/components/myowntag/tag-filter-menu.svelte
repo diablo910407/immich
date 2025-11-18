@@ -72,9 +72,9 @@
   </button>
 
   {#if open}
-    <div id="tag-filter-dropdown" class="absolute z-50 mt-2 w-[540px] max-w-[80vw] bg-white dark:bg-immich-dark-gray border rounded-xl shadow-xl p-3">
+    <div id="tag-filter-dropdown" class="absolute right-0 z-50 mt-2 w-[420px] sm:w-[480px] max-w-[70vw] bg-white dark:bg-immich-dark-gray border rounded-xl shadow-xl p-3">
       <div class="grid grid-cols-2 gap-4">
-        <div>
+        <div class="min-w-0">
           <div class="text-xs font-semibold mb-2">一级标签</div>
           <div class="max-h-[260px] overflow-auto pr-1">
             {#each types as t (t.id)}
@@ -85,7 +85,7 @@
             {/each}
           </div>
         </div>
-        <div>
+        <div class="min-w-0">
           <div class="text-xs font-semibold mb-2">二级标签</div>
           <div class="max-h-[260px] overflow-auto pr-1">
             {#each skills as s (s.id)}
