@@ -1,6 +1,8 @@
 <script lang="ts">
   import { getLabelsFresh } from '$lib/utils/myowntag-client';
   import { createEventDispatcher } from 'svelte';
+  import { Button } from '@immich/ui';
+  import { mdiTagOutline } from '@mdi/js';
   import { SvelteSet } from 'svelte/reactivity';
 
   const dispatch = createEventDispatcher<{ apply: { typeIds: string[]; skillIds: string[] } }>();
@@ -67,9 +69,7 @@
 </script>
 
 <div class="relative inline-block">
-  <button id="tag-filter-button" type="button" class="px-3 py-1.5 rounded-lg border bg-white dark:bg-immich-dark-gray text-sm hover:bg-gray-50 dark:hover:bg-immich-dark-primary/10" onclick={toggleOpen}>
-    标签
-  </button>
+  <Button id="tag-filter-button" leadingIcon={mdiTagOutline} size="small" variant="ghost" color="secondary" onclick={toggleOpen}>标签</Button>
 
   {#if open}
     <div id="tag-filter-dropdown" class="absolute right-0 z-50 mt-2 w-[420px] sm:w-[480px] max-w-[70vw] bg-white dark:bg-immich-dark-gray border rounded-xl shadow-xl p-3">
