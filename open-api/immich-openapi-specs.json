@@ -4726,6 +4726,145 @@
         "description": "This endpoint requires the `memoryAsset.create` permission."
       }
     },
+    "/myowntag/labels": {
+      "get": {
+        "operationId": "getLabels",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyOwnTagLabelsDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "tags": [
+          "MyOwnTag"
+        ],
+        "x-immich-permission": "person.read",
+        "description": "This endpoint requires the `person.read` permission."
+      },
+      "post": {
+        "operationId": "saveLabels",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MyOwnTagLabelsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "tags": [
+          "MyOwnTag"
+        ],
+        "x-immich-permission": "person.update",
+        "description": "This endpoint requires the `person.update` permission."
+      }
+    },
+    "/myowntag/person/{id}/labels": {
+      "get": {
+        "operationId": "getPersonLabels",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "tags": [
+          "MyOwnTag"
+        ],
+        "x-immich-permission": "person.read",
+        "description": "This endpoint requires the `person.read` permission."
+      },
+      "post": {
+        "operationId": "savePersonLabels",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "tags": [
+          "MyOwnTag"
+        ],
+        "x-immich-permission": "person.update",
+        "description": "This endpoint requires the `person.update` permission."
+      }
+    },
     "/notifications": {
       "delete": {
         "operationId": "deleteNotifications",
@@ -13197,6 +13336,64 @@
             "type": "boolean"
           }
         },
+        "type": "object"
+      },
+      "MyOwnTagLabelsDto": {
+        "properties": {
+          "skills": {
+            "items": {
+              "$ref": "#/components/schemas/MyOwnTagSkillDto"
+            },
+            "type": "array"
+          },
+          "types": {
+            "items": {
+              "$ref": "#/components/schemas/MyOwnTagTypeDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "skills",
+          "types"
+        ],
+        "type": "object"
+      },
+      "MyOwnTagSkillDto": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "typeId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "typeId"
+        ],
+        "type": "object"
+      },
+      "MyOwnTagTypeDto": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
         "type": "object"
       },
       "NotificationCreateDto": {

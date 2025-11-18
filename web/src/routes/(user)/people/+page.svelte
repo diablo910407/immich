@@ -21,7 +21,7 @@
   import { clearQueryParam } from '$lib/utils/navigation';
   import { getAllPeople, getPerson, searchPerson, updatePerson, type PersonResponseDto } from '@immich/sdk';
   import { Button, Icon, modalManager, toastManager } from '@immich/ui';
-  import { mdiAccountOff, mdiEyeOutline } from '@mdi/js';
+  import { mdiAccountOff, mdiEyeOutline, mdiTagOutline } from '@mdi/js';
   import { onMount } from 'svelte';
   import { t } from 'svelte-i18n';
   import { quintOut } from 'svelte/easing';
@@ -30,6 +30,9 @@
   import { sortPersonGroupsBy, sortPersonGroupsDefault, type PersonSortDimension } from '$lib/utils/person-group-sort-by';
   import { personRatingStore } from '$lib/stores/person-rating.store';
   import { SvelteSet } from 'svelte/reactivity';
+  import MyOwnTagPersonLabels from '$lib/components/myowntag/person-labels.svelte';
+  import TagFilterMenu from '$lib/components/myowntag/tag-filter-menu.svelte';
+  import { getPersonLabels } from '$lib/utils/myowntag-client';
 
   interface Props {
     data: PageData;
@@ -239,10 +242,62 @@
   let people = $derived(data.people.people);
   let visiblePeople = $derived(people.filter((people) => !people.isHidden));
   let countVisiblePeople = $derived(searchName ? searchedPeopleLocal.length : data.people.total - data.people.hidden);
-  let showPeople = $derived(searchName ? searchedPeopleLocal : visiblePeople);
-  // 仅在列表数据变化时刷新排序，评分变动不触发
+  
+  let tagFilter: { typeIds: string[]; skillIds: string[] } | null = $state(null);
+  let labelsMap = $state<Record<string, { typeId: string; skillId?: string }[]>>({});
+  let showPeopleFiltered = $state<PersonResponseDto[]>([]);
+  $effect(() => {
+    const current = searchName ? searchedPeopleLocal : visiblePeople;
+    const hasFilter = ((tagFilter?.typeIds?.length ?? 0) > 0) || ((tagFilter?.skillIds?.length ?? 0) > 0);
+    if (!hasFilter) {
+      showPeopleFiltered = current;
+      return;
+    }
+    const ids = current.map((p) => p.id);
+    const concurrency = 6;
+    let i = 0;
+    const next = async () => {
+      if (i >= ids.length) {
+        return;
+      }
+      const id = ids[i++];
+      try {
+        const res = await getPersonLabels(id);
+        labelsMap[id] = res.labels || [];
+      } catch {
+        labelsMap[id] = [];
+      }
+      await next();
+    };
+    const tasks: Promise<void>[] = [];
+    for (let k = 0; k < concurrency; k++) {
+      tasks.push(next());
+    }
+    void Promise.all(tasks).then(() => {
+      const typeIds = tagFilter?.typeIds ?? [];
+      const skillIds = tagFilter?.skillIds ?? [];
+      const typeSel = new Set(typeIds);
+      const skillSel = new Set(skillIds);
+      showPeopleFiltered = current.filter((p) => {
+        const labels = labelsMap[p.id] || [];
+        for (const l of labels) {
+          if (skillSel.size > 0 && l.skillId && skillSel.has(l.skillId)) {
+            return true;
+          }
+          if (typeSel.size > 0 && typeSel.has(l.typeId)) {
+            return true;
+          }
+        }
+        return false;
+      });
+    }).catch(() => {
+      showPeopleFiltered = current;
+    });
+  });
   let showPeopleSorted = $derived(
-    sortByDimension === 'overall' ? sortPersonGroupsDefault(showPeople) : sortPersonGroupsBy(showPeople, sortByDimension),
+    sortByDimension === 'overall'
+      ? sortPersonGroupsDefault(showPeopleFiltered)
+      : sortPersonGroupsBy(showPeopleFiltered, sortByDimension),
   );
   // 调试日志：维度与排序人数
   $effect(() => {
@@ -385,6 +440,15 @@
             />
           </div>
         </div>
+        <Button
+          leadingIcon={mdiTagOutline}
+          size="small"
+          variant="ghost"
+          color="secondary"
+          onclick={() => goto('/myowntag/labels')}
+          >管理标签</Button
+        >
+        <TagFilterMenu on:apply={({ detail }) => { tagFilter = (detail.typeIds.length > 0 || detail.skillIds.length > 0) ? detail : null; }} />
         <SortDimensionButtons
           selected={sortByDimension}
           onChange={(d) => {
@@ -436,6 +500,8 @@
             onfocusout={() => onNameChangeSubmit(newName, person)}
             oninput={(event) => onNameChangeInputUpdate(event)}
           />
+
+          <MyOwnTagPersonLabels {person} />
         </div>
       {/snippet}
     </PeopleInfiniteScroll>

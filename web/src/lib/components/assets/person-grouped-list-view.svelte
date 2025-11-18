@@ -21,6 +21,7 @@
   import type { TimelineAsset } from '$lib/managers/timeline-manager/types';
   import type { AssetInteraction } from '$lib/stores/asset-interaction.svelte';
   import Skeleton from '$lib/elements/Skeleton.svelte';
+  import { getLabelsCached, getPersonLabels } from '$lib/utils/myowntag-client';
 
   interface Props {
     assetInteraction: AssetInteraction;
@@ -32,6 +33,7 @@
     sortBy?: PersonSortDimension;
     // 可选：限定只显示某一个人物（用于人物详情页的列表模式）
     person?: PersonResponseDto;
+    tagFilter?: { typeIds: string[]; skillIds: string[] };
   }
 
   let {
@@ -42,6 +44,7 @@
     onSelect = () => {},
     sortBy = 'overall',
     person,
+    tagFilter,
   }: Props = $props();
 
   type PersonGroup = {
@@ -57,8 +60,12 @@
   };
 
   let groups: PersonGroup[] = $state([]);
+  let filteredGroups: PersonGroup[] = $state([]);
   let isInitializing = $state(true);
   let ratingMap = $state<Record<string, PersonRatingDimensions>>({});
+  let myowntagTypes = $state<{ id: string; name: string }[]>([]);
+  let myowntagSkills = $state<{ id: string; typeId: string; name: string }[]>([]);
+  let labelsMap = $state<Record<string, { typeId: string; skillId?: string }[]>>({});
 
   const getPersonRating = (id: string): PersonRatingDimensions => {
     return ratingMap[id] ?? personRatingStore.ensure(id);
@@ -144,6 +151,43 @@
     }
   };
 
+  const ensureMyOwnTagDict = async () => {
+    try {
+      const dict = await getLabelsCached();
+      myowntagTypes = dict.types;
+      myowntagSkills = dict.skills;
+      console.debug('[PersonList] myowntag 字典加载完成', { types: myowntagTypes.length, skills: myowntagSkills.length });
+    } catch (error) {
+      console.warn('[PersonList] myowntag 字典加载失败', error);
+    }
+  };
+
+  const loadPersonLabels = async (personId: string) => {
+    if (labelsMap[personId]) {
+      return;
+    }
+    try {
+      const res = await getPersonLabels(personId);
+      labelsMap[personId] = res.labels || [];
+      console.debug('[PersonList] 加载人物标签:', personId, '数量:', labelsMap[personId].length);
+    } catch (error) {
+      console.warn('[PersonList] 加载人物标签失败', personId, error);
+      labelsMap[personId] = [];
+    }
+  };
+
+  const getTypeTags = (personId: string) => {
+    const labels = labelsMap[personId] || [];
+    const typeIds = Array.from(new Set(labels.map((l) => l.typeId)));
+    return typeIds.map((id) => myowntagTypes.find((t) => t.id === id)).filter(Boolean) as { id: string; name: string }[];
+  };
+
+  const getSkillTags = (personId: string) => {
+    const labels = labelsMap[personId] || [];
+    const skillIds = Array.from(new Set(labels.filter((l) => !!l.skillId).map((l) => l.skillId as string)));
+    return skillIds.map((id) => myowntagSkills.find((s) => s.id === id)).filter(Boolean) as { id: string; typeId: string; name: string }[];
+  };
+
   const loadGroupAssets = async (group: PersonGroup) => {
     if (group.loading || (!group.hasNext && group.loadedOnce)) {
       return;
@@ -177,6 +221,7 @@
               const stats = await getPersonStatistics({ id: group.person.id });
               group.totalCount = stats.assets ?? getPersonAssetCount(group.person);
               console.debug('[PersonList] 获取人物统计总数:', group.person.name, '总数:', group.totalCount);
+              await loadPersonLabels(group.person.id);
             } catch (error) {
               console.warn('[PersonList] 获取人物详情失败，使用已有字段回退', error);
             }
@@ -211,6 +256,54 @@
   const getCandidateSet = (assets: TimelineAsset[]) => new Set(assets.filter((a) => assetInteraction.hasSelectionCandidate(a.id)));
 
   $effect(() => { void initGroups(); });
+  $effect(() => { void ensureMyOwnTagDict(); });
+
+  const prefetchAllLabels = async () => {
+    const ids = groups.map((g) => g.person.id);
+    const pool: Promise<void>[] = [];
+    const concurrency = 5;
+    let i = 0;
+    const next = async () => {
+      if (i >= ids.length) {
+        return;
+      }
+      const id = ids[i++];
+      await loadPersonLabels(id);
+      await next();
+    };
+    for (let k = 0; k < concurrency; k++) {
+      pool.push(next());
+    }
+    await Promise.all(pool);
+  };
+
+  $effect(() => {
+    if (person) {
+      filteredGroups = groups;
+      return;
+    }
+    const typeSel = new Set(tagFilter?.typeIds || []);
+    const skillSel = new Set(tagFilter?.skillIds || []);
+    const hasFilter = typeSel.size > 0 || skillSel.size > 0;
+    if (!hasFilter) {
+      filteredGroups = groups;
+      return;
+    }
+    void prefetchAllLabels().then(() => {
+      filteredGroups = groups.filter((g) => {
+        const labels = labelsMap[g.person.id] || [];
+        for (const l of labels) {
+          if (skillSel.size > 0 && l.skillId && skillSel.has(l.skillId)) {
+            return true;
+          }
+          if (typeSel.size > 0 && typeSel.has(l.typeId)) {
+            return true;
+          }
+        }
+        return false;
+      });
+    });
+  });
 
   // 监听排序维度变更，动态重排已有分组（不重新拉取数据）
   $effect(() => {
@@ -254,17 +347,18 @@
   {#if isInitializing}
     <Skeleton height={240} title="加载人物分组中" />
   {:else}
-    {#each groups as group (group.person.id)}
+    {#each (person ? groups : filteredGroups) as group (group.person.id)}
       <div class="mb-8">
         <div class="flex items-start justify-between mb-3" use:intersectOnce={group}>
           <div class="flex items-start gap-3 w-full">
             <div class="h-12 w-12 rounded-full bg-gray-300 dark:bg-gray-700 overflow-hidden shrink-0">
               <ImageThumbnail circle url={getPeopleThumbnailUrl(group.person)} altText={group.person.name} widthStyle="48px" heightStyle="48px" />
             </div>
-            <div class="flex-1 flex flex-col gap-1">
+            <div class="flex-1 flex flex-col gap-1 min-w-0">
               <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 leading-tight">{group.person.name}</h3>
-              <div class="flex items-center justify-between">
-                <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-700 dark:text-gray-300">
+              <div class="flex items-start gap-3">
+                <div class="flex items-start gap-3 flex-1">
+                  <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-700 dark:text-gray-300">
                   <div class="flex items-center gap-2">
                     <span class="w-10 text-right">综合</span>
                     <span style="color:#FFD700">
@@ -289,8 +383,23 @@
                       <FractionalStars value={getPersonRating(group.person.id).content} count={5} size="1.1em" title={`内容 ${getPersonRating(group.person.id).content}`} />
                     </span>
                   </div>
+                  </div>
+                  {#if !person}
+                    <div class="flex flex-col gap-1 min-w-0 text-xs">
+                      <div class="flex items-center gap-2 flex-nowrap overflow-hidden min-h-[22px]">
+                        {#each getTypeTags(group.person.id) as t (t.id)}
+                          <span class="inline-flex items-center gap-1 text-[11px] rounded-full px-2 py-1 bg-immich-primary/10 text-immich-primary dark:bg-immich-dark-primary/25 dark:text-white whitespace-nowrap">{t.name}</span>
+                        {/each}
+                      </div>
+                      <div class="flex items-center gap-2 flex-nowrap overflow-hidden min-h-[22px]">
+                        {#each getSkillTags(group.person.id) as s (s.id)}
+                          <span class="inline-flex items-center gap-1 text-[11px] rounded-full px-2 py-1 bg-violet-500/10 text-violet-700 dark:text-white whitespace-nowrap">{s.name}</span>
+                        {/each}
+                      </div>
+                    </div>
+                  {/if}
                 </div>
-                <div class="flex items-center gap-2">
+                <div class="ml-auto flex items-center gap-2">
                   {#if group.loading}
                     <span class="text-sm text-gray-500">加载中...</span>
                   {/if}

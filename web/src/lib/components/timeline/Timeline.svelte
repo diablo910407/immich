@@ -71,6 +71,8 @@
     ) => void;
     // 列表模式下排序维度
     sortByDimension?: PersonSortDimension;
+    // 列表模式下标签筛选
+    tagFilter?: { typeIds: string[]; skillIds: string[] } | null;
   }
 
   let {
@@ -96,6 +98,7 @@
     onThumbnailClick,
     // 列表排序维度，仅在 viewMode === 'list' 时生效
     sortByDimension = 'overall',
+    tagFilter = null,
   }: Props = $props();
 
   timelineManager = new TimelineManager();
@@ -704,6 +707,7 @@
       {showArchiveIcon}
       onSelect={onSelect}
       sortBy={listSortDimension}
+      tagFilter={tagFilter ?? undefined}
     />
   {/if}
 </section>

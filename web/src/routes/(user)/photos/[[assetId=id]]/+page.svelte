@@ -23,6 +23,7 @@
   import AssetSelectControlBar from '$lib/components/timeline/AssetSelectControlBar.svelte';
   import Timeline from '$lib/components/timeline/Timeline.svelte';
   import SortDimensionButtons from '$lib/components/photos-page/sort-dimension-buttons.svelte';
+  import TagFilterMenu from '$lib/components/myowntag/tag-filter-menu.svelte';
   import type { PersonSortDimension } from '$lib/utils/person-group-sort-by';
   import { AssetAction } from '$lib/constants';
   import { TimelineManager } from '$lib/managers/timeline-manager/timeline-manager.svelte';
@@ -56,6 +57,7 @@
   let isListView = $state(true);
   // 列表模式下的排序维度，默认综合
   let sortByDimension: PersonSortDimension = $state('overall');
+  let tagFilter: { typeIds: string[]; skillIds: string[] } | null = $state(null);
 
   const handleViewToggle = (newIsListView: boolean) => {
     isListView = newIsListView;
@@ -113,6 +115,7 @@
   {#snippet buttons()}
     <div class="flex items-center gap-3">
       {#if isListView}
+        <TagFilterMenu on:apply={({ detail }) => { tagFilter = (detail.typeIds.length > 0 || detail.skillIds.length > 0) ? detail : null; }} />
         <SortDimensionButtons
           selected={sortByDimension}
           onChange={(d) => {
@@ -135,6 +138,7 @@
     withStacked
     {isListView}
     sortByDimension={sortByDimension}
+    tagFilter={tagFilter}
   >
     {#if $preferences.memories.enabled}
       <MemoryLane />
